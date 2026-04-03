@@ -121,6 +121,36 @@ def show_cache_status() -> None:
             print()
 
 
+def show_cache_status_json() -> None:
+    """Machine-readable cache status."""
+    import json as json_mod
+    db_exists = DB_PATH.exists()
+    info = {
+        "cache_dir": str(CACHE_DIR),
+        "db_path": str(DB_PATH),
+        "db_exists": db_exists,
+        "db_size_bytes": DB_PATH.stat().st_size if db_exists else 0,
+        "sources": {},
+    }
+    if db_exists:
+        db = get_db()
+        all_kinds = [
+            "formula", "cask",
+            "installed_formula", "installed_cask",
+            "tap",
+            "local_formula", "local_cask",
+        ]
+        for kind in all_kinds:
+            if table_exists(db, kind):
+                info["sources"][kind] = {
+                    "count": table_count(db, kind),
+                    "age_seconds": round(table_age(db, kind), 1),
+                    "updated_at": table_updated_at(db, kind),
+                    "fts": f"{kind}_fts" in db.table_names(),
+                }
+    print(json_mod.dumps(info, indent=2))
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
@@ -166,7 +196,10 @@ def main(argv=None):
 
     # ── cache status ──
     if args.cache:
-        show_cache_status()
+        if args.json:
+            show_cache_status_json()
+        else:
+            show_cache_status()
         return
 
     if not args.query:

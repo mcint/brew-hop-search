@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "brew-search"
 version = "0.2.0"
 description = "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages"
-readme = {text = "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages.", content-type = "text/plain"}
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [{ name = "steward" }]
