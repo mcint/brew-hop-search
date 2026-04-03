@@ -54,6 +54,8 @@ def refresh(kind: str, url: str, silent: bool = False) -> bool:
     if not silent:
         print(dim(f"  \u21bb fetching {kind} index \u2026"), file=sys.stderr)
     try:
+        from brew_search.version_check import check_if_due
+        check_if_due()
         data = fetch(url)
         save_raw_json(kind, data)
         db = get_db()
