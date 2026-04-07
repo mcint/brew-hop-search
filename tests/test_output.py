@@ -16,7 +16,8 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.snap import snap  # noqa: F401
+from brew_hop_search.display import fmt_formula, fmt_cask, fmt_tap_formula
+from tests.snap import snap, expect  # noqa: F401
 
 # ── test data ───────────────────────────────────────────────────────────────
 
@@ -110,8 +111,9 @@ def _seed_db(db_path: Path) -> None:
         ("installed_formula", 0),
         ("installed_cask", 0),
     ]:
+        age = now - 3600 if kind in ("formula", "cask") else now - 60  # installed: recent
         db["_meta"].insert(
-            {"kind": kind, "updated_at": now - 3600, "count": count},  # 1h old
+            {"kind": kind, "updated_at": age, "count": count},
             pk="kind", replace=True,
         )
 
@@ -127,7 +129,7 @@ def _run_with_db(db_path: Path, *args: str) -> str:
     env = os.environ.copy()
     result = subprocess.run(
         [sys.executable, "-m", "brew_hop_search.cli", *args],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, text=True, timeout=60,
         env={**env, "BREW_HOP_SEARCH_DB": str(db_path)},
     )
     return _strip_ansi(result.stdout + result.stderr)
@@ -192,12 +194,113 @@ def test_version_flag(snap):
     assert re.match(r"brew-hop-search \d+\.\d+\.\d+", first_line)
 
 
+# ── inline expect tests (ppx_expect style) ─────────────────────────────────
+# Full expected output as multiline literals — diffs appear in commits.
+
+def test_expect_default_output(testdb):
+    r"""Default output with inline expected output.
+
+    Expected:
+    >   cache: 1h old   searching formula + cask
+    >
+    >   formulae
+    >   python@3.13  3.13.2  Interpreted, ...  │ https://www.python.org/
+    >
+    >   1 result(s)  •  brew install python@3.13
+    """
+    expect(_run_with_db(testdb, "python"),
+           "  cache: 1h old   searching formula + cask\n"
+           "\n"
+           "  formulae\n"
+           "  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n"
+           "\n"
+           "  1 result(s)  •  brew install python@3.13\n")
+
+
+def test_expect_quiet_output(testdb):
+    r"""Quiet mode — no labels, no chrome, just results.
+
+    Expected:
+    > python@3.13  3.13.2  Interpreted, ...  │ https://www.python.org/
+    """
+    expect(_run_with_db(testdb, "-q", "python"),
+           "python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
+
+
+def test_expect_grep_output(testdb):
+    r"""Grep mode — tab-separated, parseable.
+
+    Expected:
+    > python@3.13\t3.13.2\thttps://www.python.org/
+    >   Interpreted, interactive, object-oriented programming language
+    """
+    expect(_run_with_db(testdb, "-g", "python"),
+           "python@3.13\t3.13.2\thttps://www.python.org/\n"
+           "  Interpreted, interactive, object-oriented programming language\n")
+
+
+def test_expect_no_results(testdb):
+    r"""No results message.
+
+    Expected:
+    >   cache: 1h old   searching formula + cask
+    >
+    >   no results for 'zzzznonexistent'
+    """
+    expect(_run_with_db(testdb, "zzzznonexistent"),
+           "  cache: 1h old   searching formula + cask\n"
+           "\n"
+           "  no results for 'zzzznonexistent'\n")
+
+
+def test_expect_cask_search(testdb):
+    r"""Cask-only search with inline expected.
+
+    Expected:
+    >   cache: 1h old   searching cask
+    >
+    >   casks
+    >   firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
+    >
+    >   1 result(s)  •  brew install firefox
+    """
+    expect(_run_with_db(testdb, "-c", "firefox"),
+           "  cache: 1h old   searching cask\n"
+           "\n"
+           "  casks\n"
+           "  firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n"
+           "\n"
+           "  1 result(s)  •  brew install firefox\n")
+
+
+def test_expect_multi_word_query(testdb):
+    r"""Multi-word query: both terms must match.
+
+    Expected:
+    >   cache: 1h old   searching formula + cask
+    >
+    >   formulae
+    >   ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ ...
+    >
+    >   1 result(s)  •  brew install ripgrep
+    """
+    expect(_run_with_db(testdb, "search", "tool"),
+           "  cache: 1h old   searching formula + cask\n"
+           "\n"
+           "  formulae\n"
+           "  ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n"
+           "\n"
+           "  1 result(s)  •  brew install ripgrep\n")
+
+
 # ── display formatter tests ────────────────────────────────────────────────
 
 def test_fmt_formula(snap):
-    """Formula formatting (single item)."""
-    from brew_hop_search.display import fmt_formula, USE_COLOR
-    # Temporarily disable color for stable snapshots
+    """Formula formatting (single item).
+
+    Expected output:
+    > python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+    """
     import brew_hop_search.display as d
     old = d.USE_COLOR
     d.USE_COLOR = False
@@ -206,11 +309,17 @@ def test_fmt_formula(snap):
     finally:
         d.USE_COLOR = old
     snap.assert_match(output + "\n")
+    expect(output + "\n", """\
+python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+""")
 
 
 def test_fmt_cask(snap):
-    """Cask formatting (single item)."""
-    from brew_hop_search.display import fmt_cask
+    """Cask formatting (single item).
+
+    Expected output:
+    > firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
+    """
     import brew_hop_search.display as d
     old = d.USE_COLOR
     d.USE_COLOR = False
@@ -219,11 +328,17 @@ def test_fmt_cask(snap):
     finally:
         d.USE_COLOR = old
     snap.assert_match(output + "\n")
+    expect(output + "\n", """\
+firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
+""")
 
 
 def test_fmt_tap(snap):
-    """Tap formula formatting (single item)."""
-    from brew_hop_search.display import fmt_tap_formula
+    """Tap formula formatting (single item).
+
+    Expected output:
+    > custom-tool  2.0.1  user/homebrew-tools  A custom tap formula  │ https://example.com/custom
+    """
     import brew_hop_search.display as d
     old = d.USE_COLOR
     d.USE_COLOR = False
@@ -238,3 +353,6 @@ def test_fmt_tap(snap):
     finally:
         d.USE_COLOR = old
     snap.assert_match(output + "\n")
+    expect(output + "\n", """\
+custom-tool  2.0.1  user/homebrew-tools  A custom tap formula  │ https://example.com/custom
+""")

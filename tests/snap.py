@@ -58,6 +58,28 @@ class Snap:
             )
 
 
+def expect(actual: str, expected: str) -> None:
+    """ppx_expect-style inline assertion: expected output literal in the test source.
+
+    Usage:
+        expect(run("--help"), '''\
+    usage: brew-hop-search ...
+    ...
+    ''')
+    """
+    actual = actual.rstrip("\n") + "\n"
+    if actual != expected:
+        import difflib
+        diff = difflib.unified_diff(
+            expected.splitlines(keepends=True),
+            actual.splitlines(keepends=True),
+            fromfile="expected (inline)",
+            tofile="actual",
+        )
+        diff_str = "".join(diff)
+        pytest.fail(f"Inline expect mismatch:\n\n{diff_str}")
+
+
 @pytest.fixture
 def snap(request) -> Snap:
     """Pytest fixture — snapshot name derived from test function name."""
