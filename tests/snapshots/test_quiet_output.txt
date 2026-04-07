@@ -1,2 +1,1 @@
-  formulae
-  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/

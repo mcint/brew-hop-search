@@ -12,9 +12,9 @@ def fmt_duration(seconds: float) -> str:
         return "never"
     s = int(seconds)
     if s < 60:
-        return f"{s}s"
+        return "<1m"
     if s < 3600:
-        return f"{s // 60}m{s % 60}s" if s % 60 else f"{s // 60}m"
+        return f"{s // 60}m"
     h, rem = divmod(s, 3600)
     m = rem // 60
     if h < 24:
@@ -106,35 +106,45 @@ def fmt_installed(f: dict, kind: str) -> str:
     return base
 
 
-def display_section(results: list, kind: str, label: str | None = None) -> None:
+def display_section(results: list, kind: str, label: str | None = None,
+                    quiet: bool = False) -> None:
     if not results:
         return
-    if label is None:
-        label = yellow("casks") if kind == "cask" else green("formulae")
+    if not quiet:
+        if label is None:
+            label = yellow("casks") if kind == "cask" else green("formulae")
+        print(f"  {label}")
     fmt = fmt_cask if kind == "cask" else fmt_formula
-    print(f"  {label}")
+    indent = "" if quiet else "  "
     for item in results:
-        print(f"  {fmt(item)}")
-    print()
+        print(f"{indent}{fmt(item)}")
+    if not quiet:
+        print()
 
 
-def display_tap_section(results: list) -> None:
+def display_tap_section(results: list, quiet: bool = False) -> None:
     if not results:
         return
-    print(f"  {magenta('taps')}")
+    if not quiet:
+        print(f"  {magenta('taps')}")
+    indent = "" if quiet else "  "
     for item in results:
-        print(f"  {fmt_tap_formula(item)}")
-    print()
+        print(f"{indent}{fmt_tap_formula(item)}")
+    if not quiet:
+        print()
 
 
-def display_installed_section(results: list, kind: str) -> None:
+def display_installed_section(results: list, kind: str, quiet: bool = False) -> None:
     if not results:
         return
-    label = yellow("installed casks") if kind == "cask" else green("installed formulae")
-    print(f"  {label}")
+    if not quiet:
+        label = yellow("installed casks") if kind == "cask" else green("installed formulae")
+        print(f"  {label}")
+    indent = "" if quiet else "  "
     for item in results:
-        print(f"  {fmt_installed(item, kind)}")
-    print()
+        print(f"{indent}{fmt_installed(item, kind)}")
+    if not quiet:
+        print()
 
 
 def output_grep(all_results: list[tuple]) -> None:

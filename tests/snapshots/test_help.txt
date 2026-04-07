@@ -1,12 +1,12 @@
 usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-O] [-C]
                        [--stale DUR] [--fresh DUR] [-n N] [--json] [-g] [-q]
                        [-v] [-V] [-H]
-                       [query]
+                       [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
 positional arguments:
-  query                 Search query
+  query                 Search query (multiple terms matched with AND)
 
 options:
   -h, --help            show this help message and exit

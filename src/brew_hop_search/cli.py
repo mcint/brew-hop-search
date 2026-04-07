@@ -226,7 +226,7 @@ def main(argv=None):
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("query", nargs="?", help="Search query")
+    ap.add_argument("query", nargs="*", help="Search query (multiple terms matched with AND)")
     ap.add_argument("--refresh", action="store_true",
                     help="Force synchronous re-fetch before searching")
     ap.add_argument("-f", "--formulae", "--formula", action="store_true",
@@ -291,15 +291,18 @@ def main(argv=None):
         display_outdated(data, as_json=args.json)
         return
 
+    # Join multi-word query
+    query = " ".join(args.query) if args.query else ""
+
     # ── history mode ──
     if args.history:
-        if not args.query:
+        if not query:
             print("Usage: brew-hop-search --history <package-name>", file=sys.stderr)
             sys.exit(1)
-        _show_history(args.query, args.json)
+        _show_history(query, args.json)
         return
 
-    if not args.query:
+    if not query:
         ap.print_help()
         sys.exit(0)
 
@@ -362,7 +365,7 @@ def main(argv=None):
         if verbose >= 2:
             count = table_count(db, kind) or 0
             print(dim(f"  [{kind}] searching {count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
-        results = search(db, kind, args.query, args.limit, pk_col=pk_col)
+        results = search(db, kind, query, args.limit, pk_col=pk_col)
         all_results.append((kind, results, age))
 
     # ── output ──
@@ -408,16 +411,16 @@ def main(argv=None):
     first_name = None
     for kind, results, _ in all_results:
         if kind == "tap":
-            display_tap_section(results)
+            display_tap_section(results, quiet=quiet)
         elif kind.startswith("installed"):
             sub_kind = "cask" if "cask" in kind else "formula"
-            display_installed_section(results, sub_kind)
+            display_installed_section(results, sub_kind, quiet=quiet)
         elif kind.startswith("local"):
             sub_kind = "cask" if "cask" in kind else "formula"
             label = cyan("local casks") if sub_kind == "cask" else cyan("local formulae")
-            display_section(results, sub_kind, label=label)
+            display_section(results, sub_kind, label=label, quiet=quiet)
         else:
-            display_section(results, kind)
+            display_section(results, kind, quiet=quiet)
         total += len(results)
         if results and first_name is None:
             r = results[0]
@@ -425,7 +428,7 @@ def main(argv=None):
 
     if not quiet:
         if total == 0:
-            print(dim(f"  no results for {args.query!r}"))
+            print(dim(f"  no results for {query!r}"))
         elif first_name:
             print(dim(f"  {total} result(s)  \u2022  brew install {first_name}"))
 

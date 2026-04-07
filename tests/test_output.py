@@ -97,10 +97,19 @@ def _seed_db(db_path: Path) -> None:
     db["cask"].insert_all(cask_rows, pk="token")
     db["cask"].enable_fts(["token", "name", "desc"], tokenize="porter", create_triggers=True)
 
+    # Empty installed tables (prevents background brew subprocess)
+    db["installed_formula"].insert_all([], pk="name")
+    db["installed_cask"].insert_all([], pk="token")
+
     # Meta
     import time
     now = time.time()
-    for kind, count in [("formula", len(rows)), ("cask", len(cask_rows))]:
+    for kind, count in [
+        ("formula", len(rows)),
+        ("cask", len(cask_rows)),
+        ("installed_formula", 0),
+        ("installed_cask", 0),
+    ]:
         db["_meta"].insert(
             {"kind": kind, "updated_at": now - 3600, "count": count},  # 1h old
             pk="kind", replace=True,

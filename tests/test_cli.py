@@ -51,8 +51,8 @@ def test_duration_parsing():
 
 def test_duration_formatting():
     from brew_hop_search.display import fmt_duration
-    assert fmt_duration(30) == "30s"
-    assert fmt_duration(90) == "1m30s"
+    assert fmt_duration(30) == "<1m"
+    assert fmt_duration(90) == "1m"
     assert fmt_duration(3600) == "1h"
     assert fmt_duration(3660) == "1h1m"
     assert fmt_duration(86400) == "1d"
