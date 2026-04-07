@@ -67,6 +67,13 @@ def refresh(silent: bool = False) -> bool:
                       list(cask_rows[0].keys()) if cask_rows else [],
                       "token", ["token", "name", "desc"])
 
+        # Record to install history log
+        from brew_hop_search.history import record_installed
+        try:
+            record_installed(formulae, casks)
+        except Exception:
+            pass  # never block on history logging
+
         if not silent:
             status_line(dim(f"  {prefix} \u2713 {len(formulae)} formulae, {len(casks)} casks"), done=True)
         return True

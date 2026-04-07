@@ -151,6 +151,31 @@ def show_cache_status_json() -> None:
     print(json_mod.dumps(info, indent=2))
 
 
+# ── history display ─────────────────────────────────────────────────────────
+
+def _show_history(name: str, as_json: bool = False) -> None:
+    from brew_hop_search.history import get_history
+    import json as json_mod
+    rows = get_history(name)
+    if not rows:
+        print(dim(f"  no history for {name!r} — run with -i first to build the log"), file=sys.stderr)
+        return
+    if as_json:
+        print(json_mod.dumps(rows, indent=2, default=str))
+        return
+    print(f"  {bold('version history')} for {green(name)}")
+    for r in rows:
+        ts = datetime.fromtimestamp(r["recorded_at"]).strftime("%Y-%m-%d %H:%M")
+        commit = r.get("brew_commit", "")
+        ver = r["version"]
+        kind_tag = dim(f"[{r['kind']}]")
+        commit_str = dim(commit) if commit else dim("n/a")
+        print(f"  {ver}  {kind_tag}  {dim(ts)}  commit {commit_str}")
+    print()
+    print(dim("  rollback: brew install <name>@<version>"))
+    print(dim("  pin:      brew pin <name>"))
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
@@ -183,6 +208,8 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true", help="Output raw JSON")
     ap.add_argument("-g", "--grep", action="store_true",
                     help="Greppable output: slug\\tversion\\turl\\n  description")
+    ap.add_argument("-H", "--history", action="store_true",
+                    help="Show version history for a package (from install log)")
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
                     help=argparse.SUPPRESS)
 
@@ -200,6 +227,14 @@ def main(argv=None):
             show_cache_status_json()
         else:
             show_cache_status()
+        return
+
+    # ── history mode ──
+    if args.history:
+        if not args.query:
+            print("Usage: brew-hop-search --history <package-name>", file=sys.stderr)
+            sys.exit(1)
+        _show_history(args.query, args.json)
         return
 
     if not args.query:

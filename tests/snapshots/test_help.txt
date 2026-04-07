@@ -1,5 +1,5 @@
 usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-C]
-                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g]
+                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g] [-H]
                        [query]
 
 Fast offline-first Homebrew formula/cask search.
@@ -23,3 +23,4 @@ options:
   -n N, --limit N       Max results per section (default 20)
   --json                Output raw JSON
   -g, --grep            Greppable output: slug\tversion\turl\n description
+  -H, --history         Show version history for a package (from install log)
