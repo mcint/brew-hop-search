@@ -469,13 +469,8 @@ def main(argv=None):
             display_section(results, kind, quiet=quiet, total=src_count)
         total += len(results)
 
-    if not quiet:
-        if total == 0:
-            print(dim(f"  no results{f' for {query!r}' if query else ''}"))
-        elif total_matched > total or offset > 0:
-            count = f"{total}/{total_matched}" if total_matched > total else str(total)
-            range_str = f" ({offset + 1}-{offset + total})" if offset > 0 else ""
-            print(dim(f"  {count} results{range_str}"))
+    if not quiet and total == 0:
+        print(dim(f"  no results{f' for {query!r}' if query else ''}"))
 
 
 if __name__ == "__main__":

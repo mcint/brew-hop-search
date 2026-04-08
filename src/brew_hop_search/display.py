@@ -110,7 +110,7 @@ def _section_header(label: str, shown: int, total: int | None,
                     install_hint: str = "") -> str:
     """Format a section header: # label (count) • brew install ..."""
     count = f"{shown}/{total}" if total is not None and total > shown else str(shown)
-    parts = [f"{dim('#')} {label} {dim(f'({count})')}"]
+    parts = [f"  {dim('#')} {label} {dim(f'({count})')}"]
     if install_hint:
         parts.append(dim(f"• {install_hint}"))
     return "  ".join(parts)
@@ -127,18 +127,40 @@ def _install_cmd(results: list, kind: str) -> str:
     return f"brew install {name}"
 
 
+# ── source indicator column ─────────────────────────────────────────────────
+
+_SOURCE_CHARS = {
+    "formula": ("f", green),
+    "cask": ("c", yellow),
+    "tap": ("t", magenta),
+    "installed_formula": ("i", green),
+    "installed_cask": ("i", yellow),
+    "local_formula": ("f", cyan),
+    "local_cask": ("c", cyan),
+}
+
+
+def _source_tag(kind: str) -> str:
+    """Single-char colored source indicator, or space if unknown."""
+    ch, color_fn = _SOURCE_CHARS.get(kind, (" ", lambda x: x))
+    if USE_COLOR:
+        return color_fn(ch)
+    return ch
+
+
 def display_section(results: list, kind: str, label: str | None = None,
                     quiet: bool = False, total: int | None = None) -> None:
     if not results:
         return
+    tag = _source_tag(kind)
     if not quiet:
         if label is None:
             label = yellow("casks") if kind == "cask" else green("formulae")
         print(_section_header(label, len(results), total, _install_cmd(results, kind)))
     fmt = fmt_cask if kind == "cask" else fmt_formula
-    indent = "" if quiet else "  "
+    prefix = "" if quiet else f"  {tag} "
     for item in results:
-        print(f"{indent}{fmt(item)}")
+        print(f"{prefix}{fmt(item)}")
     if not quiet:
         print()
 
@@ -147,15 +169,16 @@ def display_tap_section(results: list, quiet: bool = False,
                         total: int | None = None) -> None:
     if not results:
         return
+    tag = _source_tag("tap")
     if not quiet:
         r = results[0]
         tap = r.get("tap", "")
         name = r.get("name", "")
         hint = f"brew install {tap}/{name}" if tap else ""
         print(_section_header(magenta('taps'), len(results), total, hint))
-    indent = "" if quiet else "  "
+    prefix = "" if quiet else f"  {tag} "
     for item in results:
-        print(f"{indent}{fmt_tap_formula(item)}")
+        print(f"{prefix}{fmt_tap_formula(item)}")
     if not quiet:
         print()
 
@@ -164,12 +187,14 @@ def display_installed_section(results: list, kind: str, quiet: bool = False,
                               total: int | None = None) -> None:
     if not results:
         return
+    full_kind = f"installed_{kind}"
+    tag = _source_tag(full_kind)
     if not quiet:
         label = yellow("installed casks") if kind == "cask" else green("installed formulae")
         print(_section_header(label, len(results), total, _install_cmd(results, kind)))
-    indent = "" if quiet else "  "
+    prefix = "" if quiet else f"  {tag} "
     for item in results:
-        print(f"{indent}{fmt_installed(item, kind)}")
+        print(f"{prefix}{fmt_installed(item, kind)}")
     if not quiet:
         print()
 
