@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run tests before commit. Skip with: git commit --no-verify
+set -euo pipefail
+echo "pre-commit: running tests…"
+uv run pytest tests/ -x -q --tb=short 2>&1
