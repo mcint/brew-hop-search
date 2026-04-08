@@ -1,6 +1,6 @@
   cache: 1h old   searching cask
 
-  casks
+  casks (1/2)
   firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
 
-  1 result(s)  •  brew install firefox
+  1 results • brew install firefox

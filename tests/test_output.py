@@ -198,55 +198,31 @@ def test_version_flag(snap):
 # Full expected output as multiline literals — diffs appear in commits.
 
 def test_expect_default_output(testdb):
-    r"""Default output with inline expected output.
-
-    Expected:
-    >   cache: 1h old   searching formula + cask
-    >
-    >   formulae
-    >   python@3.13  3.13.2  Interpreted, ...  │ https://www.python.org/
-    >
-    >   1 result(s)  •  brew install python@3.13
-    """
+    r"""Default output with section counts and compact footer."""
     expect(_run_with_db(testdb, "python"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae\n"
+           "  formulae (1/3)\n"
            "  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n"
            "\n"
-           "  1 result(s)  •  brew install python@3.13\n")
+           "  1 results • brew install python@3.13\n")
 
 
 def test_expect_quiet_output(testdb):
-    r"""Quiet mode — no labels, no chrome, just results.
-
-    Expected:
-    > python@3.13  3.13.2  Interpreted, ...  │ https://www.python.org/
-    """
+    r"""Quiet mode — no labels, no chrome, just results."""
     expect(_run_with_db(testdb, "-q", "python"),
            "python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
 
 
 def test_expect_grep_output(testdb):
-    r"""Grep mode — tab-separated, parseable.
-
-    Expected:
-    > python@3.13\t3.13.2\thttps://www.python.org/
-    >   Interpreted, interactive, object-oriented programming language
-    """
+    r"""Grep mode — tab-separated, parseable."""
     expect(_run_with_db(testdb, "-g", "python"),
            "python@3.13\t3.13.2\thttps://www.python.org/\n"
            "  Interpreted, interactive, object-oriented programming language\n")
 
 
 def test_expect_no_results(testdb):
-    r"""No results message.
-
-    Expected:
-    >   cache: 1h old   searching formula + cask
-    >
-    >   no results for 'zzzznonexistent'
-    """
+    r"""No results message."""
     expect(_run_with_db(testdb, "zzzznonexistent"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
@@ -254,43 +230,25 @@ def test_expect_no_results(testdb):
 
 
 def test_expect_cask_search(testdb):
-    r"""Cask-only search with inline expected.
-
-    Expected:
-    >   cache: 1h old   searching cask
-    >
-    >   casks
-    >   firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
-    >
-    >   1 result(s)  •  brew install firefox
-    """
+    r"""Cask-only search with section count."""
     expect(_run_with_db(testdb, "-c", "firefox"),
            "  cache: 1h old   searching cask\n"
            "\n"
-           "  casks\n"
+           "  casks (1/2)\n"
            "  firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n"
            "\n"
-           "  1 result(s)  •  brew install firefox\n")
+           "  1 results • brew install firefox\n")
 
 
 def test_expect_multi_word_query(testdb):
-    r"""Multi-word query: both terms must match.
-
-    Expected:
-    >   cache: 1h old   searching formula + cask
-    >
-    >   formulae
-    >   ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ ...
-    >
-    >   1 result(s)  •  brew install ripgrep
-    """
+    r"""Multi-word query: both terms must match."""
     expect(_run_with_db(testdb, "search", "tool"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae\n"
+           "  formulae (1/3)\n"
            "  ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n"
            "\n"
-           "  1 result(s)  •  brew install ripgrep\n")
+           "  1 results • brew install ripgrep\n")
 
 
 # ── display formatter tests ────────────────────────────────────────────────

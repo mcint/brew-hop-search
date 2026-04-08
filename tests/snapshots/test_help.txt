@@ -1,7 +1,4 @@
-usage: brew-hop-search [-h] [-f] [-c] [-i] [-t] [-L] [-g] [-q] [--json]
-                       [-n N[+OFF]] [-v] [--refresh [DUR]] [--stale [DUR]]
-                       [-V] [-C] [-O] [--brew-verify] [-H]
-                       [query ...]
+usage: brew-hop-search [-fcitL] [-gq|--json] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
@@ -11,37 +8,29 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
 
-sources:
-  what to search (composable, default: remote API)
-
+sources (composable, default: remote API):
   -f, --formulae, --formula
                         formulae only
   -c, --casks, --cask   casks only
   -i, --installed       installed packages
   -t, --taps            tapped repos
-  -L, --local           brew's local API cache (offline)
+  -L, --local           local API cache (offline)
 
 output:
-  how results are displayed
-
   -g, --grep            tab-separated for piping
-  -q, --quiet           results only, no chrome (for grep/fzf)
+  -q, --quiet           results only (for grep/fzf)
   --json                raw JSON
   -n N[+OFF], --limit N[+OFF]
-                        max results [+offset] (default: 20)
-  -v, --verbose         process detail (-v, -vv)
+                        max results [+offset], 0=all (default: 20)
+  -v, --verbose         process detail (-vv for more)
 
 cache:
-  freshness control
-
   --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
   --stale [DUR]         background refresh threshold (default: 6h)
 
 info:
-  status and metadata
-
-  -V, --version         version (-VV: commit log + PyPI check)
-  -C, --cache-status    show cache status
-  -O, --outdated        outdated packages with upgrade hints
-  --brew-verify         use brew for outdated (slower, authoritative)
+  -V, --version         version (-VV: commits + PyPI)
+  -C, --cache-status    cache status
+  -O, --outdated        outdated packages
+  --brew-verify         use brew for -O (slower, authoritative)
   -H, --history         version history for rollback

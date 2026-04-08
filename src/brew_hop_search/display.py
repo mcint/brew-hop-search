@@ -106,14 +106,21 @@ def fmt_installed(f: dict, kind: str) -> str:
     return base
 
 
+def _section_header(label: str, shown: int, total: int | None) -> str:
+    """Format a section header with count."""
+    if total is not None and total > shown:
+        return f"  {label} {dim(f'({shown}/{total})')}"
+    return f"  {label} {dim(f'({shown})')}"
+
+
 def display_section(results: list, kind: str, label: str | None = None,
-                    quiet: bool = False) -> None:
+                    quiet: bool = False, total: int | None = None) -> None:
     if not results:
         return
     if not quiet:
         if label is None:
             label = yellow("casks") if kind == "cask" else green("formulae")
-        print(f"  {label}")
+        print(_section_header(label, len(results), total))
     fmt = fmt_cask if kind == "cask" else fmt_formula
     indent = "" if quiet else "  "
     for item in results:
@@ -122,11 +129,12 @@ def display_section(results: list, kind: str, label: str | None = None,
         print()
 
 
-def display_tap_section(results: list, quiet: bool = False) -> None:
+def display_tap_section(results: list, quiet: bool = False,
+                        total: int | None = None) -> None:
     if not results:
         return
     if not quiet:
-        print(f"  {magenta('taps')}")
+        print(_section_header(magenta('taps'), len(results), total))
     indent = "" if quiet else "  "
     for item in results:
         print(f"{indent}{fmt_tap_formula(item)}")
@@ -134,12 +142,13 @@ def display_tap_section(results: list, quiet: bool = False) -> None:
         print()
 
 
-def display_installed_section(results: list, kind: str, quiet: bool = False) -> None:
+def display_installed_section(results: list, kind: str, quiet: bool = False,
+                              total: int | None = None) -> None:
     if not results:
         return
     if not quiet:
         label = yellow("installed casks") if kind == "cask" else green("installed formulae")
-        print(f"  {label}")
+        print(_section_header(label, len(results), total))
     indent = "" if quiet else "  "
     for item in results:
         print(f"{indent}{fmt_installed(item, kind)}")
@@ -148,7 +157,7 @@ def display_installed_section(results: list, kind: str, quiet: bool = False) -> 
 
 
 def output_grep(all_results: list[tuple]) -> None:
-    for kind, results, _ in all_results:
+    for kind, results, *_ in all_results:
         for item in results:
             slug = item.get("token") or item.get("name", "")
             ver = (
@@ -164,7 +173,7 @@ def output_grep(all_results: list[tuple]) -> None:
 
 def output_json(all_results: list[tuple]) -> None:
     combined = {}
-    for kind, results, _ in all_results:
+    for kind, results, *_ in all_results:
         combined[kind] = results
     if len(all_results) == 1:
         combined = combined[all_results[0][0]]

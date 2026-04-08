@@ -223,13 +223,14 @@ def _show_version(level: int) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
+        usage="%(prog)s [-fcitL] [-gq|--json] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("query", nargs="*", help="search terms (AND-matched)")
 
-    # ── search sources ──
-    src = ap.add_argument_group("sources", "what to search (composable, default: remote API)")
+    # ── sources ──
+    src = ap.add_argument_group("sources (composable, default: remote API)")
     src.add_argument("-f", "--formulae", "--formula", action="store_true",
                      help="formulae only")
     src.add_argument("-c", "--casks", "--cask", action="store_true",
@@ -239,23 +240,23 @@ def main(argv=None):
     src.add_argument("-t", "--taps", action="store_true",
                      help="tapped repos")
     src.add_argument("-L", "--local", action="store_true",
-                     help="brew's local API cache (offline)")
+                     help="local API cache (offline)")
 
-    # ── output format ──
-    fmt = ap.add_argument_group("output", "how results are displayed")
+    # ── output ──
+    fmt = ap.add_argument_group("output")
     fmt.add_argument("-g", "--grep", action="store_true",
                      help="tab-separated for piping")
     fmt.add_argument("-q", "--quiet", action="store_true",
-                     help="results only, no chrome (for grep/fzf)")
+                     help="results only (for grep/fzf)")
     fmt.add_argument("--json", action="store_true",
                      help="raw JSON")
     fmt.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFF]",
-                     help="max results [+offset] (default: 20)")
+                     help="max results [+offset], 0=all (default: 20)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
-                     help="process detail (-v, -vv)")
+                     help="process detail (-vv for more)")
 
     # ── cache ──
-    cache = ap.add_argument_group("cache", "freshness control")
+    cache = ap.add_argument_group("cache")
     cache.add_argument("--refresh", nargs="?", type=parse_duration, const=0,
                        default=None, metavar="DUR",
                        help="sync refresh (bare: force, =DUR: if older)")
@@ -264,15 +265,15 @@ def main(argv=None):
                        help="background refresh threshold (default: 6h)")
 
     # ── info ──
-    info = ap.add_argument_group("info", "status and metadata")
+    info = ap.add_argument_group("info")
     info.add_argument("-V", "--version", action="count", default=0,
-                      help="version (-VV: commit log + PyPI check)")
+                      help="version (-VV: commits + PyPI)")
     info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
-                      help="show cache status")
+                      help="cache status")
     info.add_argument("-O", "--outdated", action="store_true",
-                      help="outdated packages with upgrade hints")
+                      help="outdated packages")
     info.add_argument("--brew-verify", action="store_true",
-                      help="use brew for outdated (slower, authoritative)")
+                      help="use brew for -O (slower, authoritative)")
     info.add_argument("-H", "--history", action="store_true",
                       help="version history for rollback")
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
@@ -331,10 +332,10 @@ def main(argv=None):
     limit_str = args.limit
     if "+" in limit_str:
         lim_part, off_part = limit_str.split("+", 1)
-        limit = int(lim_part)
+        limit = int(lim_part) or 999999  # 0 = all
         offset = int(off_part)
     else:
-        limit = int(limit_str)
+        limit = int(limit_str) or 999999  # 0 = all
         offset = 0
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
@@ -408,9 +409,8 @@ def main(argv=None):
         truncated = len(results) > limit
         if truncated:
             results = results[:limit]
-        # For no-query listing, total = source_count; for search, estimate from results
-        total_matched += source_count if not query and truncated else len(results)
-        all_results.append((kind, results, age))
+        total_matched += source_count if truncated else len(results)
+        all_results.append((kind, results, age, source_count))
 
     # ── output ──
     if args.json:
@@ -423,11 +423,11 @@ def main(argv=None):
 
     if not quiet:
         # Cache age header with kind prefixes
-        ages = [age for _, _, age in all_results if age != float("inf")]
+        ages = [age for _, _, age, _ in all_results if age != float("inf")]
         min_age = min(ages) if ages else 0
         age_str = "just fetched" if min_age < 60 else fmt_duration(min_age) + " old"
         source_labels = []
-        for kind, _, _ in all_results:
+        for kind, _, _, _ in all_results:
             if kind.startswith("installed"):
                 sub = "formula" if "formula" in kind else "cask"
                 source_labels.append(f"{green('installed')}:{green(sub) if sub == 'formula' else yellow(sub)}")
@@ -453,18 +453,18 @@ def main(argv=None):
 
     total = 0
     first_name = None
-    for kind, results, _ in all_results:
+    for kind, results, _, src_count in all_results:
         if kind == "tap":
-            display_tap_section(results, quiet=quiet)
+            display_tap_section(results, quiet=quiet, total=src_count)
         elif kind.startswith("installed"):
             sub_kind = "cask" if "cask" in kind else "formula"
-            display_installed_section(results, sub_kind, quiet=quiet)
+            display_installed_section(results, sub_kind, quiet=quiet, total=src_count)
         elif kind.startswith("local"):
             sub_kind = "cask" if "cask" in kind else "formula"
             label = cyan("local casks") if sub_kind == "cask" else cyan("local formulae")
-            display_section(results, sub_kind, label=label, quiet=quiet)
+            display_section(results, sub_kind, label=label, quiet=quiet, total=src_count)
         else:
-            display_section(results, kind, quiet=quiet)
+            display_section(results, kind, quiet=quiet, total=src_count)
         total += len(results)
         if results and first_name is None:
             r = results[0]
@@ -472,19 +472,10 @@ def main(argv=None):
 
     if not quiet:
         if total == 0:
-            if query:
-                print(dim(f"  no results for {query!r}"))
-            else:
-                print(dim(f"  no results"))
-        else:
-            parts = []
-            if total_matched > total:
-                parts.append(f"{total} of {total_matched} result(s)")
-            else:
-                parts.append(f"{total} result(s)")
-            if first_name:
-                parts.append(f"brew install {first_name}")
-            print(dim(f"  {'  •  '.join(parts)}"))
+            print(dim(f"  no results{f' for {query!r}' if query else ''}"))
+        elif first_name:
+            count = f"{total}/{total_matched}" if total_matched > total else str(total)
+            print(dim(f"  {count} results • brew install {first_name}"))
 
 
 if __name__ == "__main__":
