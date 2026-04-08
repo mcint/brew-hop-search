@@ -161,8 +161,6 @@ def display_section(results: list, kind: str, label: str | None = None,
     prefix = "" if quiet else f"  {tag} "
     for item in results:
         print(f"{prefix}{fmt(item)}")
-    if not quiet:
-        print()
 
 
 def display_tap_section(results: list, quiet: bool = False,
@@ -179,8 +177,6 @@ def display_tap_section(results: list, quiet: bool = False,
     prefix = "" if quiet else f"  {tag} "
     for item in results:
         print(f"{prefix}{fmt_tap_formula(item)}")
-    if not quiet:
-        print()
 
 
 def display_installed_section(results: list, kind: str, quiet: bool = False,
@@ -195,8 +191,6 @@ def display_installed_section(results: list, kind: str, quiet: bool = False,
     prefix = "" if quiet else f"  {tag} "
     for item in results:
         print(f"{prefix}{fmt_installed(item, kind)}")
-    if not quiet:
-        print()
 
 
 def output_grep(all_results: list[tuple]) -> None:

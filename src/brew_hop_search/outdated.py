@@ -26,6 +26,10 @@ def collect_outdated_fast() -> dict:
     """Compare installed vs API index versions locally (no brew subprocess).
 
     Returns dict with 'formulae' and 'casks' lists matching brew outdated format.
+
+    NOTE: This may differ from `brew outdated` because brew considers revision,
+    bottle availability, pinned status, and keg-only semantics. Use --brew-verify
+    to cross-check. See: https://docs.brew.sh/FAQ
     """
     db = get_db()
     outdated_formulae = []

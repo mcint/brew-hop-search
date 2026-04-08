@@ -198,10 +198,8 @@ def test_version_flag(snap):
 # Full expected output as multiline literals — diffs appear in commits.
 
 def test_expect_default_output(testdb):
-    r"""Default output — source tag, install hint on title bar."""
+    r"""Default output — no cache line, source tag, install hint on title bar."""
     expect(_run_with_db(testdb, "python"),
-           "  cache: 1h old   searching formula + cask\n"
-           "\n"
            "  # formulae (1/3)  • brew install python@3.13\n"
            "  f python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
 
@@ -222,16 +220,12 @@ def test_expect_grep_output(testdb):
 def test_expect_no_results(testdb):
     r"""No results message."""
     expect(_run_with_db(testdb, "zzzznonexistent"),
-           "  cache: 1h old   searching formula + cask\n"
-           "\n"
            "  no results for 'zzzznonexistent'\n")
 
 
 def test_expect_cask_search(testdb):
     r"""Cask-only search — c tag, install --cask hint."""
     expect(_run_with_db(testdb, "-c", "firefox"),
-           "  cache: 1h old   searching cask\n"
-           "\n"
            "  # casks (1/2)  • brew install --cask firefox\n"
            "  c firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n")
 
@@ -239,8 +233,6 @@ def test_expect_cask_search(testdb):
 def test_expect_multi_word_query(testdb):
     r"""Multi-word query: both terms must match."""
     expect(_run_with_db(testdb, "search", "tool"),
-           "  cache: 1h old   searching formula + cask\n"
-           "\n"
            "  # formulae (1/3)  • brew install ripgrep\n"
            "  f ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n")
 

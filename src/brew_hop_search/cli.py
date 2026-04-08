@@ -322,10 +322,16 @@ def main(argv=None):
         _show_history(query, args.json)
         return
 
-    # No query and no source flags → help
+    # No query and no source flags → short usage hints
     has_source_flag = args.installed or args.local or args.taps
     if not query and not has_source_flag:
-        ap.print_help()
+        from brew_hop_search import version_info
+        print(dim(f"  brew-hop-search {version_info()}"))
+        print()
+        print(f"  {bold('try:')}  brew-hop-search python")
+        print(f"        brew-hop-search -i           {dim('-- list installed')}")
+        print(f"        brew-hop-search -O            {dim('-- show outdated')}")
+        print(f"        brew-hop-search --help        {dim('-- full options')}")
         sys.exit(0)
 
     # Parse --limit N[+OFFSET]
@@ -423,8 +429,8 @@ def main(argv=None):
         output_grep(all_results)
         return
 
-    if not quiet:
-        # Cache age header with kind prefixes
+    if verbose >= 1 and not quiet:
+        # Cache age header — only shown with -v
         ages = [age for _, _, age, _ in all_results if age != float("inf")]
         min_age = min(ages) if ages else 0
         age_str = "just fetched" if min_age < 60 else fmt_duration(min_age) + " old"
@@ -442,7 +448,6 @@ def main(argv=None):
                 source_labels.append(yellow("cask"))
             else:
                 source_labels.append(green("formula"))
-        # Deduplicate labels while preserving order
         seen = set()
         unique_labels = []
         for l in source_labels:
@@ -450,8 +455,7 @@ def main(argv=None):
                 seen.add(l)
                 unique_labels.append(l)
         searching = " + ".join(unique_labels)
-        print(dim(f"  cache: {age_str}   searching {searching}"))
-        print()
+        print(dim(f"  -- cache: {age_str}   searching {searching}"))
 
     total = 0
     first_name = None

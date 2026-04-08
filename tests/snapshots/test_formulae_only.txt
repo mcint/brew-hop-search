@@ -1,4 +1,2 @@
-  cache: 1h old   searching formula
-
   # formulae (1/3)  • brew install python@3.13
   f python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
