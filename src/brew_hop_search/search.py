@@ -35,10 +35,17 @@ def fts_query(terms: list[str]) -> str:
 
 
 def search(db: sqlite_utils.Database, kind: str, query: str, limit: int,
-           pk_col: str | None = None) -> list[dict]:
+           pk_col: str | None = None, offset: int = 0) -> list[dict]:
     terms = query.split()
+
+    # No query → return all rows (for listing)
     if not terms:
-        return []
+        if kind not in db.table_names():
+            return []
+        rows = [json.loads(r[0]) for r in db.execute(
+            f"SELECT raw FROM {kind} LIMIT ? OFFSET ?", [limit, offset]
+        ).fetchall()]
+        return rows
 
     if pk_col is None:
         pk_col = "name" if kind in ("formula", "installed_formula") else "token"
@@ -78,4 +85,4 @@ def search(db: sqlite_utils.Database, kind: str, query: str, limit: int,
             scored.append((s, item))
 
     scored.sort(key=lambda x: (-x[0], x[1].get("name") or x[1].get("token", "")))
-    return [item for _, item in scored[:limit]]
+    return [item for _, item in scored[offset:offset + limit]]

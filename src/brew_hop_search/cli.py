@@ -249,8 +249,8 @@ def main(argv=None):
                     help="Use brew command for outdated (slower, authoritative)")
     ap.add_argument("-C", "--cache", action="store_true",
                     help="Show cache status and exit")
-    ap.add_argument("-n", "--limit", type=int, default=20, metavar="N",
-                    help="Max results per section (default 20)")
+    ap.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFFSET]",
+                    help="Max results per section, optional +offset (e.g. 20+40)")
     ap.add_argument("--json", action="store_true", help="Output raw JSON")
     ap.add_argument("-g", "--grep", action="store_true",
                     help="Greppable output: slug\\tversion\\turl\\n  description")
@@ -301,12 +301,28 @@ def main(argv=None):
         if not query:
             print("Usage: brew-hop-search --history <package-name>", file=sys.stderr)
             sys.exit(1)
+        # Ensure installed index exists so history can be populated
+        from brew_hop_search.history import get_history
+        if not get_history(query):
+            installed.ensure_cache(force=False)
         _show_history(query, args.json)
         return
 
-    if not query:
+    # No query and no source flags → help
+    has_source_flag = args.installed or args.local or args.taps
+    if not query and not has_source_flag:
         ap.print_help()
         sys.exit(0)
+
+    # Parse --limit N[+OFFSET]
+    limit_str = args.limit
+    if "+" in limit_str:
+        lim_part, off_part = limit_str.split("+", 1)
+        limit = int(lim_part)
+        offset = int(off_part)
+    else:
+        limit = int(limit_str)
+        offset = 0
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
     # --refresh: None=no force, 0=force now, >0=sync if older than DUR
@@ -322,28 +338,39 @@ def main(argv=None):
         status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 
     # ── determine search sources ──
+    # -f/-c filter which kinds. -i/-t/-L select which data sources.
+    # Sources are additive: -i -t searches installed + taps.
+    # Default (no source flags): remote API.
+    want_formula = not args.casks  # True unless -c only
+    want_cask = not args.formulae  # True unless -f only
+
     search_sources = []  # (kind, label, pk_col)
 
     if args.installed:
         installed.ensure_cache(force=force_refresh)
-        if not args.casks:
+        if want_formula:
             search_sources.append(("installed_formula", "installed formulae", "name"))
-        if not args.formulae:
+        if want_cask:
             search_sources.append(("installed_cask", "installed casks", "token"))
-    elif args.local:
+
+    if args.local:
         local.ensure_cache(force=force_refresh)
-        if not args.casks:
+        if want_formula:
             search_sources.append(("local_formula", "local formulae", "name"))
-        if not args.formulae:
+        if want_cask:
             search_sources.append(("local_cask", "local casks", "token"))
-    else:
+
+    if args.taps:
+        taps.ensure_cache(force=force_refresh)
+        search_sources.append(("tap", "taps", "slug"))
+
+    # Default: remote API (only if no source flags set)
+    if not has_source_flag:
         api_kinds = []
-        if args.formulae and not args.casks:
-            api_kinds = [("formula", api.FORMULA_URL)]
-        elif args.casks and not args.formulae:
-            api_kinds = [("cask", api.CASK_URL)]
-        else:
-            api_kinds = [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]
+        if want_formula:
+            api_kinds.append(("formula", api.FORMULA_URL))
+        if want_cask:
+            api_kinds.append(("cask", api.CASK_URL))
 
         for kind, url in api_kinds:
             if not api.ensure_cache(kind, url, force_refresh, stale, fresh):
@@ -352,24 +379,24 @@ def main(argv=None):
             pk = "name" if kind == "formula" else "token"
             search_sources.append((kind, kind, pk))
 
-    if args.taps:
-        taps.ensure_cache(force=force_refresh)
-        search_sources.append(("tap", "taps", "slug"))
-
-    # Background installed refresh only when explicitly searching installed
-    # (never on default path — avoids spawning `brew info` on every search)
-
     # ── search ──
     db = get_db()
     all_results = []
+    total_matched = 0
     for kind, label, pk_col in search_sources:
         if not table_exists(db, kind):
             continue
         age = table_age(db, kind)
+        source_count = table_count(db, kind) or 0
         if verbose >= 2:
-            count = table_count(db, kind) or 0
-            print(dim(f"  [{kind}] searching {count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
-        results = search(db, kind, query, args.limit, pk_col=pk_col)
+            print(dim(f"  [{kind}] searching {source_count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
+        # Fetch limit+1 to detect truncation
+        results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
+        truncated = len(results) > limit
+        if truncated:
+            results = results[:limit]
+        # For no-query listing, total = source_count; for search, estimate from results
+        total_matched += source_count if not query and truncated else len(results)
         all_results.append((kind, results, age))
 
     # ── output ──
@@ -432,9 +459,19 @@ def main(argv=None):
 
     if not quiet:
         if total == 0:
-            print(dim(f"  no results for {query!r}"))
-        elif first_name:
-            print(dim(f"  {total} result(s)  \u2022  brew install {first_name}"))
+            if query:
+                print(dim(f"  no results for {query!r}"))
+            else:
+                print(dim(f"  no results"))
+        else:
+            parts = []
+            if total_matched > total:
+                parts.append(f"{total} of {total_matched} result(s)")
+            else:
+                parts.append(f"{total} result(s)")
+            if first_name:
+                parts.append(f"brew install {first_name}")
+            print(dim(f"  {'  •  '.join(parts)}"))
 
 
 if __name__ == "__main__":

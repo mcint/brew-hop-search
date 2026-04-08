@@ -1,6 +1,6 @@
 usage: brew-hop-search [-h] [--refresh [DUR]] [--stale [DUR]] [-f] [-c] [-i]
-                       [-t] [-L] [-O] [--brew-verify] [-C] [-n N] [--json]
-                       [-g] [-q] [-v] [-V] [-H]
+                       [-t] [-L] [-O] [--brew-verify] [-C] [-n N[+OFFSET]]
+                       [--json] [-g] [-q] [-v] [-V] [-H]
                        [query ...]
 
 Fast offline-first Homebrew formula/cask search.
@@ -22,7 +22,8 @@ options:
   -O, --outdated        Show outdated packages with upgrade/pin hints
   --brew-verify         Use brew command for outdated (slower, authoritative)
   -C, --cache           Show cache status and exit
-  -n N, --limit N       Max results per section (default 20)
+  -n N[+OFFSET], --limit N[+OFFSET]
+                        Max results per section, optional +offset (e.g. 20+40)
   --json                Output raw JSON
   -g, --grep            Greppable output: slug\tversion\turl\n description
   -q, --quiet           Quiet mode: results only, no header/footer
