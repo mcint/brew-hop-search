@@ -7,7 +7,7 @@ import sys
 
 from brew_hop_search.cache import get_db, table_exists
 from brew_hop_search.display import (
-    bold, dim, green, yellow, red, status_line, fmt_duration,
+    bold, dim, green, yellow, cyan, red, magenta, status_line,
 )
 
 
@@ -22,45 +22,92 @@ def _brew_outdated_json() -> list[dict]:
     return json.loads(result.stdout)
 
 
+def _version_with_rev(version: str, revision: int) -> str:
+    """Combine version + revision like brew does: 1.2.3_1."""
+    if revision and revision > 0:
+        return f"{version}_{revision}"
+    return version
+
+
 def collect_outdated_fast() -> dict:
-    """Compare installed vs API index versions locally (no brew subprocess).
+    """Compare installed vs API index using raw JSON (no brew subprocess).
 
-    Returns dict with 'formulae' and 'casks' lists matching brew outdated format.
+    Compares version+revision from installed JSON against API JSON.
+    Respects pinned status and marks keg-only packages.
 
-    NOTE: This may differ from `brew outdated` because brew considers revision,
-    bottle availability, pinned status, and keg-only semantics. Use --brew-verify
-    to cross-check. See: https://docs.brew.sh/FAQ
+    Limitations vs `brew outdated`:
+    - Does not check bottle rebuild numbers
+    - Does not evaluate `pour_bottle_only_if` conditions
+    - Tap-only formulae not in the main API index are skipped
+    Use --brew-verify to cross-check.
     """
     db = get_db()
     outdated_formulae = []
     outdated_casks = []
 
-    if table_exists(db, "installed_formula") and table_exists(db, "formula"):
-        for row in db.execute(
-            """SELECT i.name, i.version AS installed_ver, a.version AS latest_ver
-               FROM installed_formula i
-               JOIN formula a ON i.name = a.name
-               WHERE i.version != a.version AND a.version != ''"""
-        ).fetchall():
-            outdated_formulae.append({
-                "name": row[0],
-                "installed_versions": [row[1]],
-                "current_version": row[2],
-                "pinned": False,
-            })
+    # Build API version lookup from raw JSON
+    api_versions = {}  # name -> (version, revision)
+    if table_exists(db, "formula"):
+        for row in db.execute("SELECT name, raw FROM formula").fetchall():
+            raw = json.loads(row[1])
+            ver = (raw.get("versions") or {}).get("stable", "")
+            rev = raw.get("revision", 0)
+            api_versions[row[0]] = (ver, rev)
 
-    if table_exists(db, "installed_cask") and table_exists(db, "cask"):
-        for row in db.execute(
-            """SELECT i.token, i.version AS installed_ver, a.version AS latest_ver
-               FROM installed_cask i
-               JOIN cask a ON i.token = a.token
-               WHERE i.version != a.version AND a.version != ''"""
-        ).fetchall():
-            outdated_casks.append({
-                "name": row[0],
-                "installed_versions": [row[1]],
-                "current_version": row[2],
-            })
+    if table_exists(db, "installed_formula"):
+        for row in db.execute("SELECT raw FROM installed_formula").fetchall():
+            raw = json.loads(row[0])
+            name = raw.get("name", "")
+            pinned = raw.get("pinned", False)
+            keg_only = raw.get("keg_only", False)
+
+            # Get installed version(s) from the installed array
+            installed_list = raw.get("installed") or []
+            if not installed_list:
+                continue
+            installed_ver = installed_list[0].get("version", "")
+
+            # Compare against API
+            if name not in api_versions:
+                continue  # tap-only formula, not in main index
+            api_ver, api_rev = api_versions[name]
+            if not api_ver:
+                continue
+            api_full = _version_with_rev(api_ver, api_rev)
+
+            if installed_ver != api_full:
+                entry = {
+                    "name": name,
+                    "installed_versions": [installed_ver],
+                    "current_version": api_full,
+                    "pinned": pinned,
+                }
+                if keg_only:
+                    entry["keg_only"] = True
+                outdated_formulae.append(entry)
+
+    # Casks: simpler — just version string comparison
+    api_cask_versions = {}
+    if table_exists(db, "cask"):
+        for row in db.execute("SELECT token, raw FROM cask").fetchall():
+            raw = json.loads(row[1])
+            api_cask_versions[row[0]] = str(raw.get("version", ""))
+
+    if table_exists(db, "installed_cask"):
+        for row in db.execute("SELECT raw FROM installed_cask").fetchall():
+            raw = json.loads(row[0])
+            token = raw.get("token", "")
+            installed_ver = str(raw.get("installed", ""))
+            if not installed_ver or token not in api_cask_versions:
+                continue
+            api_ver = api_cask_versions[token]
+            if installed_ver != api_ver and api_ver != "latest":
+                outdated_casks.append({
+                    "name": token,
+                    "installed_versions": [installed_ver],
+                    "current_version": api_ver,
+                    "auto_updates": raw.get("auto_updates", False),
+                })
 
     return {"formulae": outdated_formulae, "casks": outdated_casks}
 
@@ -105,33 +152,32 @@ def display_outdated(data: dict, as_json: bool = False) -> None:
         return
 
     if formulae:
-        print(f"  {green('outdated formulae')}")
+        print(f"  {dim('#')} {green('outdated formulae')} {dim(f'({len(formulae)})')}")
         for f in formulae:
             name = f.get("name", "")
             current = f.get("installed_versions", ["?"])
             if isinstance(current, list):
                 current = current[0] if current else "?"
             latest = f.get("current_version", "?")
-            pinned = f.get("pinned", False)
-            pin_tag = f"  {yellow('[pinned]')}" if pinned else ""
-            print(f"  {bold(green(name))}  {dim(str(current))} → {latest}{pin_tag}")
-        print()
+            tags = []
+            if f.get("pinned"):
+                tags.append(yellow("[pinned]"))
+            if f.get("keg_only"):
+                tags.append(dim("[keg-only]"))
+            tag_str = "  " + " ".join(tags) if tags else ""
+            print(f"  {bold(green(name))}  {dim(str(current))} → {latest}{tag_str}")
 
     if casks:
-        print(f"  {yellow('outdated casks')}")
+        print(f"  {dim('#')} {yellow('outdated casks')} {dim(f'({len(casks)})')}")
         for c in casks:
             name = c.get("name", "")
             current = c.get("installed_versions", "?")
-            if isinstance(current, str):
-                pass
-            elif isinstance(current, list):
+            if isinstance(current, list):
                 current = current[0] if current else "?"
             latest = c.get("current_version", "?")
-            print(f"  {bold(yellow(name))}  {dim(str(current))} → {latest}")
-        print()
+            tag_str = f"  {dim('[auto-updates]')}" if c.get("auto_updates") else ""
+            print(f"  {bold(yellow(name))}  {dim(str(current))} → {latest}{tag_str}")
 
-    total = len(formulae) + len(casks)
-    print(dim(f"  {total} outdated  •  brew upgrade"))
-    print(dim(f"  pin:      brew pin <name>"))
-    print(dim(f"  rollback: brew install <name>@<version>"))
-    print(dim(f"  history:  brew-hop-search -H <name>"))
+    print(dim(f"  -- brew upgrade • brew pin <name> • -H <name> for history"))
+    print(dim(f"  -- may differ from brew outdated (pins, bottles, tap-only)"))
+    print(dim(f"  -- use --brew-verify for authoritative results"))
