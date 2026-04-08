@@ -106,11 +106,25 @@ def fmt_installed(f: dict, kind: str) -> str:
     return base
 
 
-def _section_header(label: str, shown: int, total: int | None) -> str:
-    """Format a section header with count."""
-    if total is not None and total > shown:
-        return f"  {label} {dim(f'({shown}/{total})')}"
-    return f"  {label} {dim(f'({shown})')}"
+def _section_header(label: str, shown: int, total: int | None,
+                    install_hint: str = "") -> str:
+    """Format a section header: label (count) • brew install ..."""
+    count = f"{shown}/{total}" if total is not None and total > shown else str(shown)
+    parts = [f"  {label} {dim(f'({count})')}"]
+    if install_hint:
+        parts.append(dim(f"• {install_hint}"))
+    return "  ".join(parts)
+
+
+def _install_cmd(results: list, kind: str) -> str:
+    """Derive the install hint from the first result."""
+    if not results:
+        return ""
+    r = results[0]
+    name = r.get("token") or r.get("name", "")
+    if kind == "cask":
+        return f"brew install --cask {name}"
+    return f"brew install {name}"
 
 
 def display_section(results: list, kind: str, label: str | None = None,
@@ -120,7 +134,7 @@ def display_section(results: list, kind: str, label: str | None = None,
     if not quiet:
         if label is None:
             label = yellow("casks") if kind == "cask" else green("formulae")
-        print(_section_header(label, len(results), total))
+        print(_section_header(label, len(results), total, _install_cmd(results, kind)))
     fmt = fmt_cask if kind == "cask" else fmt_formula
     indent = "" if quiet else "  "
     for item in results:
@@ -134,7 +148,11 @@ def display_tap_section(results: list, quiet: bool = False,
     if not results:
         return
     if not quiet:
-        print(_section_header(magenta('taps'), len(results), total))
+        r = results[0]
+        tap = r.get("tap", "")
+        name = r.get("name", "")
+        hint = f"brew install {tap}/{name}" if tap else ""
+        print(_section_header(magenta('taps'), len(results), total, hint))
     indent = "" if quiet else "  "
     for item in results:
         print(f"{indent}{fmt_tap_formula(item)}")
@@ -148,7 +166,7 @@ def display_installed_section(results: list, kind: str, quiet: bool = False,
         return
     if not quiet:
         label = yellow("installed casks") if kind == "cask" else green("installed formulae")
-        print(_section_header(label, len(results), total))
+        print(_section_header(label, len(results), total, _install_cmd(results, kind)))
     indent = "" if quiet else "  "
     for item in results:
         print(f"{indent}{fmt_installed(item, kind)}")

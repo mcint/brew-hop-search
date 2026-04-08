@@ -468,19 +468,14 @@ def main(argv=None):
         else:
             display_section(results, kind, quiet=quiet, total=src_count)
         total += len(results)
-        if results and first_name is None:
-            r = results[0]
-            first_name = r.get("token") or r.get("name", "")
 
     if not quiet:
         if total == 0:
             print(dim(f"  no results{f' for {query!r}' if query else ''}"))
-        elif first_name:
+        elif total_matched > total or offset > 0:
             count = f"{total}/{total_matched}" if total_matched > total else str(total)
-            range_str = ""
-            if offset > 0:
-                range_str = f" ({offset + 1}-{offset + total})"
-            print(dim(f"  {count} results{range_str} • brew install {first_name}"))
+            range_str = f" ({offset + 1}-{offset + total})" if offset > 0 else ""
+            print(dim(f"  {count} results{range_str}"))
 
 
 if __name__ == "__main__":

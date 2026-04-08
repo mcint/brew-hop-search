@@ -198,14 +198,12 @@ def test_version_flag(snap):
 # Full expected output as multiline literals — diffs appear in commits.
 
 def test_expect_default_output(testdb):
-    r"""Default output with section counts and compact footer."""
+    r"""Default output — install hint on section title bar."""
     expect(_run_with_db(testdb, "python"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae (1/3)\n"
-           "  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n"
-           "\n"
-           "  1 results • brew install python@3.13\n")
+           "  formulae (1/3)  • brew install python@3.13\n"
+           "  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
 
 
 def test_expect_quiet_output(testdb):
@@ -230,14 +228,12 @@ def test_expect_no_results(testdb):
 
 
 def test_expect_cask_search(testdb):
-    r"""Cask-only search with section count."""
+    r"""Cask-only search — install --cask hint on title bar."""
     expect(_run_with_db(testdb, "-c", "firefox"),
            "  cache: 1h old   searching cask\n"
            "\n"
-           "  casks (1/2)\n"
-           "  firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n"
-           "\n"
-           "  1 results • brew install firefox\n")
+           "  casks (1/2)  • brew install --cask firefox\n"
+           "  firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n")
 
 
 def test_expect_multi_word_query(testdb):
@@ -245,10 +241,8 @@ def test_expect_multi_word_query(testdb):
     expect(_run_with_db(testdb, "search", "tool"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae (1/3)\n"
-           "  ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n"
-           "\n"
-           "  1 results • brew install ripgrep\n")
+           "  formulae (1/3)  • brew install ripgrep\n"
+           "  ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n")
 
 
 # ── display formatter tests ────────────────────────────────────────────────
