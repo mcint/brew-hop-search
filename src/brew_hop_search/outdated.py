@@ -233,12 +233,19 @@ def _display_outdated_diff(fast: dict, brew: dict) -> None:
             continue
 
         # Counts
-        agree = sum(1 for n in all_names if n in fast_map and n in brew_map)
+        agree = sum(1 for n in all_names if n in fast_map and n in brew_map
+                    and _outdated_current(fast_map[n]) == _outdated_current(brew_map[n]))
+        differ = sum(1 for n in all_names if n in fast_map and n in brew_map
+                     and _outdated_current(fast_map[n]) != _outdated_current(brew_map[n]))
         only_fast = sum(1 for n in all_names if n in fast_map and n not in brew_map)
         only_brew = sum(1 for n in all_names if n not in fast_map and n in brew_map)
         total = len(all_names)
-        print(f"  {dim('#')} {color_fn(label)} {dim(f'({total})')}"
-              f"  {dim(f'~{agree} +{only_brew} -{only_fast}')}")
+        diff_str = f"~{differ}" if differ else ""
+        parts = [s for s in [diff_str, f"+{only_brew}" if only_brew else "",
+                             f"-{only_fast}" if only_fast else ""] if s]
+        summary = f"  {dim(' '.join(parts))}" if parts else ""
+        match_note = f"  {dim(f'{agree} match')}" if agree else ""
+        print(f"  {dim('#')} {color_fn(label)} {dim(f'({total})')}{summary}{match_note}")
 
         for name in all_names:
             in_fast = name in fast_map
@@ -247,7 +254,7 @@ def _display_outdated_diff(fast: dict, brew: dict) -> None:
             b_entry = brew_map.get(name, {})
 
             if in_fast and in_brew:
-                # Both agree it's outdated — show brew's version, word-diff if different
+                # Both agree it's outdated — check if versions differ
                 f_inst = _outdated_installed(f_entry)
                 b_inst = _outdated_installed(b_entry)
                 f_cur = _outdated_current(f_entry)
@@ -259,13 +266,14 @@ def _display_outdated_diff(fast: dict, brew: dict) -> None:
                     tags.append(dim("[keg-only]"))
                 if b_entry.get("auto_updates"):
                     tags.append(dim("[auto-updates]"))
-                # Word-diff: highlight version differences
+                # Word-diff: highlight version differences with ~
                 if f_cur != b_cur:
                     ver_str = f"{dim(f_inst)} → {red(f_cur)}{dim('|')}{green(b_cur)}"
                     tag_line = "  " + " ".join(tags) if tags else ""
                     print(f"  {yellow('~')} {bold(color_fn(name))}  {ver_str}{tag_line}")
                 else:
-                    print(_fmt_outdated_line(name, str(b_inst), b_cur, tags, color_fn, "~"))
+                    # Agree completely — show plain (no prefix, just indent)
+                    print(_fmt_outdated_line(name, str(b_inst), b_cur, tags, color_fn, " "))
             elif in_brew and not in_fast:
                 # Brew found it, fast missed it
                 installed = _outdated_installed(b_entry)
@@ -280,5 +288,5 @@ def _display_outdated_diff(fast: dict, brew: dict) -> None:
                 print(_fmt_outdated_line(name, installed, current, tags, color_fn, red("-")))
 
     print()
-    print(dim(f"  ~ both agree  {green('+')} brew-only (fast missed)  {red('-')} fast-only (brew disagrees)"))
-    print(dim(f"  version word-diff: {red('fast')}{dim('|')}{green('brew')} when versions differ"))
+    print(dim(f"  {yellow('~')} version differs  {green('+')} brew-only  {red('-')} fast-only  (unmarked = agree)"))
+    print(dim(f"  word-diff: {red('fast')}{dim('|')}{green('brew')} on version mismatch"))
