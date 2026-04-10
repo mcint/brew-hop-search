@@ -138,13 +138,46 @@ def collect_outdated(use_brew: bool = False, silent: bool = False) -> dict:
     return data
 
 
-def display_outdated(data: dict, as_json: bool = False) -> None:
-    """Display outdated packages with upgrade/pin hints."""
+def _outdated_name(entry: dict) -> str:
+    return entry.get("name", entry.get("token", ""))
+
+
+def _outdated_installed(entry: dict) -> str:
+    v = entry.get("installed_versions", ["?"])
+    return v[0] if isinstance(v, list) and v else str(v)
+
+
+def _outdated_current(entry: dict) -> str:
+    return entry.get("current_version", "?")
+
+
+def _fmt_outdated_line(name: str, installed: str, current: str, tags: list[str],
+                       color_fn=green, prefix: str = " ") -> str:
+    """Format one outdated line with optional diff prefix."""
+    tag_str = "  " + " ".join(tags) if tags else ""
+    return f"  {prefix} {bold(color_fn(name))}  {dim(installed)} → {current}{tag_str}"
+
+
+def display_outdated(data: dict, as_json: bool = False,
+                     diff_data: dict | None = None) -> None:
+    """Display outdated packages with upgrade/pin hints.
+
+    If diff_data is provided, show a package-matched diff between
+    the fast (data) and brew-verify (diff_data) results using
+    +/-/~ prefixes.
+    """
     formulae = data.get("formulae", [])
     casks = data.get("casks", [])
 
     if as_json:
-        print(json.dumps(data, indent=2))
+        if diff_data:
+            print(json.dumps({"fast": data, "brew": diff_data}, indent=2))
+        else:
+            print(json.dumps(data, indent=2))
+        return
+
+    if diff_data:
+        _display_outdated_diff(data, diff_data)
         return
 
     if not formulae and not casks:
@@ -154,30 +187,98 @@ def display_outdated(data: dict, as_json: bool = False) -> None:
     if formulae:
         print(f"  {dim('#')} {green('outdated formulae')} {dim(f'({len(formulae)})')}")
         for f in formulae:
-            name = f.get("name", "")
-            current = f.get("installed_versions", ["?"])
-            if isinstance(current, list):
-                current = current[0] if current else "?"
-            latest = f.get("current_version", "?")
+            name = _outdated_name(f)
+            installed = _outdated_installed(f)
+            current = _outdated_current(f)
             tags = []
             if f.get("pinned"):
                 tags.append(yellow("[pinned]"))
             if f.get("keg_only"):
                 tags.append(dim("[keg-only]"))
-            tag_str = "  " + " ".join(tags) if tags else ""
-            print(f"  {bold(green(name))}  {dim(str(current))} → {latest}{tag_str}")
+            print(_fmt_outdated_line(name, installed, current, tags, green))
 
     if casks:
         print(f"  {dim('#')} {yellow('outdated casks')} {dim(f'({len(casks)})')}")
         for c in casks:
-            name = c.get("name", "")
-            current = c.get("installed_versions", "?")
-            if isinstance(current, list):
-                current = current[0] if current else "?"
-            latest = c.get("current_version", "?")
-            tag_str = f"  {dim('[auto-updates]')}" if c.get("auto_updates") else ""
-            print(f"  {bold(yellow(name))}  {dim(str(current))} → {latest}{tag_str}")
+            name = _outdated_name(c)
+            installed = _outdated_installed(c)
+            current = _outdated_current(c)
+            tags = []
+            if c.get("auto_updates"):
+                tags.append(dim("[auto-updates]"))
+            print(_fmt_outdated_line(name, installed, current, tags, yellow))
 
     print(dim(f"  -- brew upgrade • brew pin <name> • -H <name> for history"))
-    print(dim(f"  -- may differ from brew outdated (pins, bottles, tap-only)"))
-    print(dim(f"  -- use --brew-verify for authoritative results"))
+    print(dim(f"  -- use --brew-verify to diff against brew's authoritative results"))
+
+
+def _display_outdated_diff(fast: dict, brew: dict) -> None:
+    """Show package-matched diff between fast and brew-verify results.
+
+    Prefixes:
+      ~  both agree (version match or both present with different versions)
+      +  only in brew (fast missed it)
+      -  only in fast (brew disagrees)
+    """
+    for kind, label, color_fn in [
+        ("formulae", "outdated formulae", green),
+        ("casks", "outdated casks", yellow),
+    ]:
+        fast_list = fast.get(kind, [])
+        brew_list = brew.get(kind, [])
+        fast_map = {_outdated_name(e): e for e in fast_list}
+        brew_map = {_outdated_name(e): e for e in brew_list}
+        all_names = sorted(set(fast_map) | set(brew_map))
+        if not all_names:
+            continue
+
+        # Counts
+        agree = sum(1 for n in all_names if n in fast_map and n in brew_map)
+        only_fast = sum(1 for n in all_names if n in fast_map and n not in brew_map)
+        only_brew = sum(1 for n in all_names if n not in fast_map and n in brew_map)
+        total = len(all_names)
+        print(f"  {dim('#')} {color_fn(label)} {dim(f'({total})')}"
+              f"  {dim(f'~{agree} +{only_brew} -{only_fast}')}")
+
+        for name in all_names:
+            in_fast = name in fast_map
+            in_brew = name in brew_map
+            f_entry = fast_map.get(name, {})
+            b_entry = brew_map.get(name, {})
+
+            if in_fast and in_brew:
+                # Both agree it's outdated — show brew's version, word-diff if different
+                f_inst = _outdated_installed(f_entry)
+                b_inst = _outdated_installed(b_entry)
+                f_cur = _outdated_current(f_entry)
+                b_cur = _outdated_current(b_entry)
+                tags = []
+                if b_entry.get("pinned"):
+                    tags.append(yellow("[pinned]"))
+                if b_entry.get("keg_only") or f_entry.get("keg_only"):
+                    tags.append(dim("[keg-only]"))
+                if b_entry.get("auto_updates"):
+                    tags.append(dim("[auto-updates]"))
+                # Word-diff: highlight version differences
+                if f_cur != b_cur:
+                    ver_str = f"{dim(f_inst)} → {red(f_cur)}{dim('|')}{green(b_cur)}"
+                    tag_line = "  " + " ".join(tags) if tags else ""
+                    print(f"  {yellow('~')} {bold(color_fn(name))}  {ver_str}{tag_line}")
+                else:
+                    print(_fmt_outdated_line(name, str(b_inst), b_cur, tags, color_fn, "~"))
+            elif in_brew and not in_fast:
+                # Brew found it, fast missed it
+                installed = _outdated_installed(b_entry)
+                current = _outdated_current(b_entry)
+                tags = [dim("[brew-only]")]
+                print(_fmt_outdated_line(name, installed, current, tags, color_fn, green("+")))
+            else:
+                # Fast found it, brew disagrees
+                installed = _outdated_installed(f_entry)
+                current = _outdated_current(f_entry)
+                tags = [dim("[fast-only]")]
+                print(_fmt_outdated_line(name, installed, current, tags, color_fn, red("-")))
+
+    print()
+    print(dim(f"  ~ both agree  {green('+')} brew-only (fast missed)  {red('-')} fast-only (brew disagrees)"))
+    print(dim(f"  version word-diff: {red('fast')}{dim('|')}{green('brew')} when versions differ"))

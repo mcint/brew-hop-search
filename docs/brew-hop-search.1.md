@@ -40,24 +40,38 @@ both installed and taps.
 
 ## OUTPUT
 
-Each result line is prefixed with a source indicator: `f`=formula, `c`=cask,
-`t`=tap, `i`=installed (colored on TTY).
+Default output shows section headers and indented results. Verbosity
+controls how much context is shown (see `docs/specs/OUTPUT.md` for full spec).
+
+* `-q`, `--quiet`:
+  Results only — no section headers, no indicators, no indent.
+  Machine-ready for `grep`/`fzf`/scripts.
+
+* `-v`, `--verbose`:
+  Adds source indicator column (`f`/`c`/`t`/`i`), cache age header,
+  and source summary. `-vv` adds per-source search stats.
 
 * `-g`, `--grep`:
   Tab-separated output for piping: *slug*\\t*version*\\t*url*
 
-* `-q`, `--quiet`:
-  Results only — no section headers, no indicators. For `grep`/`fzf`.
-
 * `--json`:
   Raw JSON output.
+
+* `--csv`:
+  CSV with header row. Pipes to `qsv`, spreadsheets, pandas.
+
+* `--tsv`:
+  Tab-separated with header row. Pipes to `sort`, `awk`, `cut`.
+
+* `--table`:
+  Aligned columns (like `sqlite3 -column`).
+
+* `--sql`:
+  SQLite INSERT statements. Pipe to `sqlite3 results.db`.
 
 * `-n` *N*[`+`*OFF*]:
   Max results per section with optional offset. `-n 0` for unlimited.
   `-n +40` skips 40 with default limit 20.
-
-* `-v`, `--verbose`:
-  Show cache status and process detail. `-vv` for per-source search info.
 
 ## CACHE
 
@@ -82,9 +96,10 @@ Each result line is prefixed with a source indicator: `f`=formula, `c`=cask,
   locally (instant, no brew subprocess). Shows pinned and keg-only status.
 
 * `--brew-verify`:
-  Use with `-O` to run `brew outdated --json=v2` instead (slower,
-  authoritative). Accounts for bottle rebuilds, `pour_bottle_only_if`,
-  and tap-only formulae that the fast path may miss.
+  Use with `-O` to run **both** fast local comparison and
+  `brew outdated --json=v2`, then show a package-matched diff.
+  Prefixes: `~` both agree, `+` brew-only, `-` fast-only.
+  Version word-diff shown when target versions differ.
 
 * `-H`, `--history`:
   Show version history for a package from the install log. Records

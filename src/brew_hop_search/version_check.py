@@ -59,7 +59,8 @@ def check_if_due() -> None:
         if _last_check_age() < CHECK_INTERVAL:
             return
 
-        req = Request(PYPI_URL, headers={"User-Agent": "brew-hop-search-cli/1.0"})
+        from brew_hop_search import user_agent
+        req = Request(PYPI_URL, headers={"User-Agent": user_agent()})
         with urlopen(req, timeout=5) as r:
             data = json.loads(r.read())
 

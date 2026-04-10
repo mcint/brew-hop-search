@@ -1,2 +1,2 @@
   # casks (1/2)  • brew install --cask firefox
-  c firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/
+    firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/

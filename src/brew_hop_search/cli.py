@@ -16,7 +16,8 @@ from brew_hop_search.cache import (
 from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
-    output_grep, output_json, fmt_duration, status_line,
+    output_grep, output_json, output_csv, output_tsv, output_table,
+    output_sql_insert, fmt_duration, status_line,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
@@ -53,72 +54,58 @@ def parse_duration(s: str) -> int:
 
 def show_cache_status() -> None:
     db_exists = DB_PATH.exists()
-    print(f"  {bold('cache dir')}   {CACHE_DIR}")
-    print(f"  {bold('database')}    {DB_PATH}  {'exists' if db_exists else red('missing')}")
+    size_str = ""
     if db_exists:
         size_mb = DB_PATH.stat().st_size / (1024 * 1024)
-        print(f"  {bold('db size')}     {size_mb:.1f} MB")
-    print()
+        size_str = f"  {dim(f'{size_mb:.1f} MB')}"
+    print(f"  {bold('db')}  {CACHE_DIR.name}/{DB_PATH.name}{size_str}")
 
-    db = get_db() if db_exists else None
+    if not db_exists:
+        print(dim("  no database — run a search to build the index"))
+        return
 
-    for kind, label_fn, url in [
-        ("formula", green, api.FORMULA_URL),
-        ("cask", yellow, api.CASK_URL),
-    ]:
-        label = label_fn(kind)
-        print(f"  {bold(label)}")
+    db = get_db()
 
-        jp = json_path(kind)
-        if jp.exists():
-            jp_size = jp.stat().st_size / (1024 * 1024)
-            jp_mtime = datetime.fromtimestamp(jp.stat().st_mtime)
-            jp_age = time.time() - jp.stat().st_mtime
-            print(f"    json      {jp.name}  {jp_size:.1f} MB  {dim(jp_mtime.strftime('%Y-%m-%d %H:%M'))}  ({fmt_duration(jp_age)} ago)")
-        else:
-            print(f"    json      {dim('not cached')}")
+    # Source table: one line each
+    # format: "  label  count  age  [fts]"
+    sources = [
+        ("formula", green, True),
+        ("cask", yellow, True),
+        ("installed_formula", green, False),
+        ("installed_cask", yellow, False),
+        ("tap", magenta, False),
+        ("local_formula", cyan, False),
+        ("local_cask", cyan, False),
+    ]
 
-        if db and table_exists(db, kind):
-            count = table_count(db, kind)
-            updated = table_updated_at(db, kind)
-            age = table_age(db, kind)
-            ts_str = datetime.fromtimestamp(updated).strftime('%Y-%m-%d %H:%M') if updated else "?"
-            count_str = f"{count} entries" if count else "?"
-            print(f"    db index  {count_str}  {dim(ts_str)}  ({fmt_duration(age)} ago)")
+    _LABELS = {
+        "formula": "formula",
+        "cask": "cask",
+        "installed_formula": "installed:f",
+        "installed_cask": "installed:c",
+        "tap": "taps",
+        "local_formula": "local:f",
+        "local_cask": "local:c",
+    }
+
+    for kind, color_fn, check_fts in sources:
+        if not table_exists(db, kind):
+            continue
+        count = table_count(db, kind) or 0
+        age = table_age(db, kind)
+        label = color_fn(_LABELS[kind])
+        age_str = fmt_duration(age)
+        parts = [f"  {label}", f"{count:>6}", f"{dim(age_str + ' ago')}"]
+        if check_fts:
             fts_name = f"{kind}_fts"
             has_fts = fts_name in db.table_names()
-            print(f"    fts5      {'ready' if has_fts else red('missing')}")
-        else:
-            print(f"    db index  {dim('not built')}")
-        print()
-
-    # Installed
-    if db:
-        for kind, label in [("installed_formula", "installed formulae"), ("installed_cask", "installed casks")]:
-            if table_exists(db, kind):
-                count = table_count(db, kind)
-                age = table_age(db, kind)
-                print(f"  {bold(green(label) if 'formula' in kind else yellow(label))}")
-                print(f"    db index  {count} entries  ({fmt_duration(age)} ago)")
-                print()
-
-    # Taps
-    if db and table_exists(db, "tap"):
-        count = table_count(db, "tap")
-        age = table_age(db, "tap")
-        print(f"  {bold(magenta('taps'))}")
-        print(f"    db index  {count} entries  ({fmt_duration(age)} ago)")
-        print()
-
-    # Local
-    for kind in ("local_formula", "local_cask"):
-        if db and table_exists(db, kind):
-            count = table_count(db, kind)
-            age = table_age(db, kind)
-            label = "local formulae" if "formula" in kind else "local casks"
-            print(f"  {bold(cyan(label))}")
-            print(f"    db index  {count} entries  ({fmt_duration(age)} ago)")
-            print()
+            parts.append(green("fts") if has_fts else red("no fts"))
+            # JSON file info
+            jp = json_path(kind)
+            if jp.exists():
+                jp_mb = jp.stat().st_size / (1024 * 1024)
+                parts.append(dim(f"{jp_mb:.0f}MB json"))
+        print("  ".join(parts))
 
 
 def show_cache_status_json() -> None:
@@ -179,10 +166,23 @@ def _show_history(name: str, as_json: bool = False) -> None:
 # ── version display ─────────────────────────────────────────────────────────
 
 def _show_version(level: int) -> None:
-    from brew_hop_search import __version__, version_info
-    print(f"brew-hop-search {version_info()}")
+    from brew_hop_search import (
+        __version__, version_info, commit_hash, user_agent,
+        PYPI_URL, GITHUB_URL, BREW_TAP_URL,
+    )
+    vi = version_info()
+    print(f"brew-hop-search {vi}")
     if level >= 2:
-        # Show git commit log for this package
+        h = commit_hash()
+        print(f"  {bold('version')}     {__version__}")
+        if h:
+            print(f"  {bold('commit')}      {h}")
+        print(f"  {bold('user-agent')}  {user_agent()}")
+        print(f"  {bold('pypi')}        {PYPI_URL}")
+        print(f"  {bold('github')}      {GITHUB_URL}")
+        if BREW_TAP_URL:
+            print(f"  {bold('tap')}         {BREW_TAP_URL}")
+        # Show git commit log
         import subprocess
         try:
             pkg_dir = Path(__file__).resolve().parent
@@ -199,10 +199,11 @@ def _show_version(level: int) -> None:
         # Live PyPI version check
         print()
         try:
-            from brew_hop_search.version_check import PYPI_URL, _parse_version
+            from brew_hop_search.version_check import _parse_version
             from urllib.request import Request, urlopen
             import json as json_mod
-            req = Request(PYPI_URL, headers={"User-Agent": "brew-hop-search-cli/1.0"})
+            pypi_json = "https://pypi.org/pypi/brew-hop-search/json"
+            req = Request(pypi_json, headers={"User-Agent": user_agent()})
             with urlopen(req, timeout=5) as r:
                 data = json_mod.loads(r.read())
             latest = data.get("info", {}).get("version", "")
@@ -223,7 +224,7 @@ def _show_version(level: int) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
-        usage="%(prog)s [-fcitL] [-gq|--json] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
+        usage="%(prog)s [-fcitL] [-gq|--json|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -250,10 +251,18 @@ def main(argv=None):
                      help="results only (for grep/fzf)")
     fmt.add_argument("--json", action="store_true",
                      help="raw JSON")
+    fmt.add_argument("--csv", action="store_true",
+                     help="CSV output")
+    fmt.add_argument("--tsv", action="store_true",
+                     help="tab-separated with header")
+    fmt.add_argument("--table", action="store_true",
+                     help="aligned columns (like sqlite3 -column)")
+    fmt.add_argument("--sql", action="store_true",
+                     help="SQLite INSERT statements")
     fmt.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFF]",
                      help="max results [+offset], 0=all (default: 20)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
-                     help="process detail (-vv for more)")
+                     help="source tags, cache info (-vv per-source detail)")
 
     # ── cache ──
     cache = ap.add_argument_group("cache")
@@ -302,9 +311,18 @@ def main(argv=None):
 
     # ── outdated mode ──
     if args.outdated:
-        from brew_hop_search.outdated import collect_outdated, display_outdated
-        data = collect_outdated(use_brew=args.brew_verify)
-        display_outdated(data, as_json=args.json)
+        from brew_hop_search.outdated import (
+            collect_outdated, collect_outdated_fast, collect_outdated_brew,
+            display_outdated,
+        )
+        if args.brew_verify:
+            # Run both: fast (local) and brew (authoritative), show diff
+            fast_data = collect_outdated_fast()
+            brew_data = collect_outdated_brew()
+            display_outdated(fast_data, as_json=args.json, diff_data=brew_data)
+        else:
+            data = collect_outdated()
+            display_outdated(data, as_json=args.json)
         return
 
     # Join multi-word query
@@ -350,12 +368,16 @@ def main(argv=None):
     # --refresh: None=no force, 0=force now, >0=sync if older than DUR
     force_refresh = args.refresh is not None and args.refresh == 0
     fresh = args.refresh if args.refresh and args.refresh > 0 else None
-    verbose = args.verbose
     quiet = args.quiet
-    silent = quiet or verbose == 0
+    # Verbosity levels: 0=quiet, 1=default, 2=-v, 3=-vv
+    if quiet:
+        verbose = 0
+    else:
+        verbose = 1 + args.verbose  # default=1, -v=2, -vv=3
+    silent = verbose <= 1
 
     # Show app name on first run (no DB yet)
-    if not effective_db_path().exists() and verbose > 0:
+    if not effective_db_path().exists() and verbose >= 2:
         from brew_hop_search import __version__
         status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 
@@ -410,7 +432,7 @@ def main(argv=None):
             continue
         age = table_age(db, kind)
         source_count = table_count(db, kind) or 0
-        if verbose >= 2:
+        if verbose >= 3:
             print(dim(f"  [{kind}] searching {source_count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
         # Fetch limit+1 to detect truncation
         results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
@@ -424,12 +446,24 @@ def main(argv=None):
     if args.json:
         output_json(all_results)
         return
+    if args.csv:
+        output_csv(all_results)
+        return
+    if args.tsv:
+        output_tsv(all_results)
+        return
+    if args.table:
+        output_table(all_results)
+        return
+    if args.sql:
+        output_sql_insert(all_results)
+        return
 
     if args.grep:
         output_grep(all_results)
         return
 
-    if verbose >= 1 and not quiet:
+    if verbose >= 2:
         # Cache age header — only shown with -v
         ages = [age for _, _, age, _ in all_results if age != float("inf")]
         min_age = min(ages) if ages else 0
@@ -461,19 +495,19 @@ def main(argv=None):
     first_name = None
     for kind, results, _, src_count in all_results:
         if kind == "tap":
-            display_tap_section(results, quiet=quiet, total=src_count)
+            display_tap_section(results, quiet=quiet, total=src_count, verbose=verbose)
         elif kind.startswith("installed"):
             sub_kind = "cask" if "cask" in kind else "formula"
-            display_installed_section(results, sub_kind, quiet=quiet, total=src_count)
+            display_installed_section(results, sub_kind, quiet=quiet, total=src_count, verbose=verbose)
         elif kind.startswith("local"):
             sub_kind = "cask" if "cask" in kind else "formula"
             label = cyan("local casks") if sub_kind == "cask" else cyan("local formulae")
-            display_section(results, sub_kind, label=label, quiet=quiet, total=src_count)
+            display_section(results, sub_kind, label=label, quiet=quiet, total=src_count, verbose=verbose)
         else:
-            display_section(results, kind, quiet=quiet, total=src_count)
+            display_section(results, kind, quiet=quiet, total=src_count, verbose=verbose)
         total += len(results)
 
-    if not quiet and total == 0:
+    if verbose >= 1 and total == 0:
         print(dim(f"  no results{f' for {query!r}' if query else ''}"))
 
 

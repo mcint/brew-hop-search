@@ -1,4 +1,4 @@
-usage: brew-hop-search [-fcitL] [-gq|--json] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+usage: brew-hop-search [-fcitL] [-gq|--json|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
@@ -20,9 +20,13 @@ output:
   -g, --grep            tab-separated for piping
   -q, --quiet           results only (for grep/fzf)
   --json                raw JSON
+  --csv                 CSV output
+  --tsv                 tab-separated with header
+  --table               aligned columns (like sqlite3 -column)
+  --sql                 SQLite INSERT statements
   -n N[+OFF], --limit N[+OFF]
                         max results [+offset], 0=all (default: 20)
-  -v, --verbose         process detail (-vv for more)
+  -v, --verbose         source tags, cache info (-vv per-source detail)
 
 cache:
   --refresh [DUR]       sync refresh (bare: force, =DUR: if older)

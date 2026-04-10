@@ -198,10 +198,10 @@ def test_version_flag(snap):
 # Full expected output as multiline literals — diffs appear in commits.
 
 def test_expect_default_output(testdb):
-    r"""Default output — no cache line, source tag, install hint on title bar."""
+    r"""Default output — section header, indented results, no source tag."""
     expect(_run_with_db(testdb, "python"),
            "  # formulae (1/3)  • brew install python@3.13\n"
-           "  f python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
+           "    python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
 
 
 def test_expect_quiet_output(testdb):
@@ -224,17 +224,17 @@ def test_expect_no_results(testdb):
 
 
 def test_expect_cask_search(testdb):
-    r"""Cask-only search — c tag, install --cask hint."""
+    r"""Cask-only search — install --cask hint, no source tag at default."""
     expect(_run_with_db(testdb, "-c", "firefox"),
            "  # casks (1/2)  • brew install --cask firefox\n"
-           "  c firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n")
+           "    firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n")
 
 
 def test_expect_multi_word_query(testdb):
     r"""Multi-word query: both terms must match."""
     expect(_run_with_db(testdb, "search", "tool"),
            "  # formulae (1/3)  • brew install ripgrep\n"
-           "  f ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n")
+           "    ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n")
 
 
 # ── display formatter tests ────────────────────────────────────────────────

@@ -18,7 +18,8 @@ TIMEOUT = 10
 
 
 def fetch(url: str):
-    req = Request(url, headers={"User-Agent": "brew-hop-search-cli/1.0"})
+    from brew_hop_search import user_agent
+    req = Request(url, headers={"User-Agent": user_agent()})
     with urlopen(req, timeout=TIMEOUT) as r:
         return json.loads(r.read())
 

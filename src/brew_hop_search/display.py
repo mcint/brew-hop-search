@@ -87,13 +87,18 @@ def fmt_cask(f: dict) -> str:
     )
 
 
-def fmt_tap_formula(f: dict) -> str:
+def fmt_tap_formula(f: dict, show_date: bool = False) -> str:
+    extra_parts = [dim(f.get("tap", ""))]
+    if show_date and f.get("modified_at"):
+        from datetime import datetime
+        ts = datetime.fromtimestamp(f["modified_at"]).strftime("%Y-%m-%d")
+        extra_parts.append(dim(ts))
     return _fmt_entry(
         bold(magenta(f["name"])),
         f.get("version", ""),
         f.get("desc", ""),
         f.get("homepage", ""),
-        extra=dim(f.get("tap", "")),
+        extra="  ".join(extra_parts),
     )
 
 
@@ -149,7 +154,8 @@ def _source_tag(kind: str) -> str:
 
 
 def display_section(results: list, kind: str, label: str | None = None,
-                    quiet: bool = False, total: int | None = None) -> None:
+                    quiet: bool = False, total: int | None = None,
+                    verbose: int = 1) -> None:
     if not results:
         return
     tag = _source_tag(kind)
@@ -158,13 +164,19 @@ def display_section(results: list, kind: str, label: str | None = None,
             label = yellow("casks") if kind == "cask" else green("formulae")
         print(_section_header(label, len(results), total, _install_cmd(results, kind)))
     fmt = fmt_cask if kind == "cask" else fmt_formula
-    prefix = "" if quiet else f"  {tag} "
+    if quiet:
+        prefix = ""
+    elif verbose >= 2:
+        prefix = f"  {tag} "
+    else:
+        prefix = "    "
     for item in results:
         print(f"{prefix}{fmt(item)}")
 
 
 def display_tap_section(results: list, quiet: bool = False,
-                        total: int | None = None) -> None:
+                        total: int | None = None,
+                        verbose: int = 1) -> None:
     if not results:
         return
     tag = _source_tag("tap")
@@ -174,13 +186,20 @@ def display_tap_section(results: list, quiet: bool = False,
         name = r.get("name", "")
         hint = f"brew install {tap}/{name}" if tap else ""
         print(_section_header(magenta('taps'), len(results), total, hint))
-    prefix = "" if quiet else f"  {tag} "
+    if quiet:
+        prefix = ""
+    elif verbose >= 2:
+        prefix = f"  {tag} "
+    else:
+        prefix = "    "
+    show_date = verbose >= 2
     for item in results:
-        print(f"{prefix}{fmt_tap_formula(item)}")
+        print(f"{prefix}{fmt_tap_formula(item, show_date=show_date)}")
 
 
 def display_installed_section(results: list, kind: str, quiet: bool = False,
-                              total: int | None = None) -> None:
+                              total: int | None = None,
+                              verbose: int = 1) -> None:
     if not results:
         return
     full_kind = f"installed_{kind}"
@@ -188,7 +207,12 @@ def display_installed_section(results: list, kind: str, quiet: bool = False,
     if not quiet:
         label = yellow("installed casks") if kind == "cask" else green("installed formulae")
         print(_section_header(label, len(results), total, _install_cmd(results, kind)))
-    prefix = "" if quiet else f"  {tag} "
+    if quiet:
+        prefix = ""
+    elif verbose >= 2:
+        prefix = f"  {tag} "
+    else:
+        prefix = "    "
     for item in results:
         print(f"{prefix}{fmt_installed(item, kind)}")
 
@@ -215,3 +239,100 @@ def output_json(all_results: list[tuple]) -> None:
     if len(all_results) == 1:
         combined = combined[all_results[0][0]]
     print(json.dumps(combined, indent=2))
+
+
+# ── tabular output formats ─────────────────────────────────────────────────
+
+def _extract_row(kind: str, item: dict) -> dict:
+    """Extract a flat row from a search result item."""
+    if "token" in item:
+        name = item["token"]
+    else:
+        name = item.get("name", "")
+    if kind == "cask":
+        ver = str(item.get("version", ""))
+    else:
+        ver = (item.get("versions") or {}).get("stable", item.get("version", ""))
+    return {
+        "source": kind.split("_")[-1][0] if "_" in kind else kind[0],
+        "name": name,
+        "version": ver,
+        "description": item.get("desc", ""),
+        "homepage": item.get("homepage", ""),
+    }
+
+
+def _all_rows(all_results: list[tuple]) -> list[dict]:
+    rows = []
+    for kind, results, *_ in all_results:
+        for item in results:
+            rows.append(_extract_row(kind, item))
+    return rows
+
+
+def output_csv(all_results: list[tuple]) -> None:
+    import csv
+    import io
+    rows = _all_rows(all_results)
+    if not rows:
+        return
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=["source", "name", "version", "description", "homepage"])
+    w.writeheader()
+    w.writerows(rows)
+    print(buf.getvalue(), end="")
+
+
+def output_tsv(all_results: list[tuple]) -> None:
+    rows = _all_rows(all_results)
+    if not rows:
+        return
+    cols = ["source", "name", "version", "description", "homepage"]
+    print("\t".join(cols))
+    for r in rows:
+        print("\t".join(r.get(c, "") for c in cols))
+
+
+def output_table(all_results: list[tuple]) -> None:
+    """Aligned columns table (like sqlite3 -column)."""
+    rows = _all_rows(all_results)
+    if not rows:
+        return
+    cols = ["source", "name", "version", "description", "homepage"]
+    headers = {"source": "S", "name": "Name", "version": "Ver",
+               "description": "Description", "homepage": "Homepage"}
+    # Compute column widths (cap description at 50, homepage at 40)
+    caps = {"description": 50, "homepage": 40}
+    widths = {}
+    for col in cols:
+        cap = caps.get(col, 999)
+        w = len(headers[col])
+        for r in rows:
+            w = max(w, min(len(r.get(col, "")), cap))
+        widths[col] = w
+
+    def _trunc(s: str, w: int) -> str:
+        return s[:w-1] + "…" if len(s) > w else s
+
+    # Header
+    hdr = "  ".join(headers[c].ljust(widths[c]) for c in cols)
+    sep = "  ".join("-" * widths[c] for c in cols)
+    print(hdr)
+    print(sep)
+    for r in rows:
+        line = "  ".join(_trunc(r.get(c, ""), widths[c]).ljust(widths[c]) for c in cols)
+        print(line)
+
+
+def output_sql_insert(all_results: list[tuple]) -> None:
+    """SQLite-friendly INSERT statements."""
+    rows = _all_rows(all_results)
+    if not rows:
+        return
+    print("CREATE TABLE IF NOT EXISTS results (source TEXT, name TEXT, version TEXT, description TEXT, homepage TEXT);")
+    for r in rows:
+        vals = ", ".join(
+            "'" + r.get(c, "").replace("'", "''") + "'"
+            for c in ["source", "name", "version", "description", "homepage"]
+        )
+        print(f"INSERT INTO results VALUES ({vals});")

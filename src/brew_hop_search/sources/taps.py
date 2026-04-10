@@ -46,6 +46,15 @@ def parse_rb(path: Path, tap_name: str) -> dict | None:
     version_m = _RE_VERSION.search(text)
     url_m = _RE_URL.search(text)
 
+    # Infer dates from file timestamps
+    try:
+        stat = path.stat()
+        mtime = stat.st_mtime
+        # birthtime (creation) available on macOS; falls back to mtime
+        ctime = getattr(stat, "st_birthtime", mtime)
+    except Exception:
+        mtime = ctime = 0.0
+
     return {
         "name": name,
         "tap": tap_name,
@@ -53,6 +62,8 @@ def parse_rb(path: Path, tap_name: str) -> dict | None:
         "homepage": homepage_m.group(1) if homepage_m else "",
         "version": version_m.group(1) if version_m else "",
         "url": url_m.group(1) if url_m else "",
+        "added_at": ctime,
+        "modified_at": mtime,
     }
 
 
@@ -97,12 +108,15 @@ def refresh(silent: bool = False) -> bool:
                 "desc": item["desc"],
                 "homepage": item["homepage"],
                 "version": item["version"],
+                "added_at": item.get("added_at", 0.0),
+                "modified_at": item.get("modified_at", 0.0),
                 "raw": json.dumps(item),
             }
             for item in items
         ]
         import_to_db(db, "tap", rows,
-                      ["slug", "name", "tap", "desc", "homepage", "version", "raw"],
+                      ["slug", "name", "tap", "desc", "homepage", "version",
+                       "added_at", "modified_at", "raw"],
                       "slug", ["name", "tap", "desc"])
         if not silent:
             print(dim(f"  \u2713 indexed {len(rows)} tap formulae/casks"), file=sys.stderr)
