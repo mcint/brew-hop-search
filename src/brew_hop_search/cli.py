@@ -109,8 +109,9 @@ def show_cache_status() -> None:
 
 
 def show_cache_status_json() -> None:
-    """Machine-readable cache status."""
+    """Machine-readable cache status with meta envelope."""
     import json as json_mod
+    from brew_hop_search.display import _envelope
     db_exists = DB_PATH.exists()
     info = {
         "cache_dir": str(CACHE_DIR),
@@ -119,6 +120,7 @@ def show_cache_status_json() -> None:
         "db_size_bytes": DB_PATH.stat().st_size if db_exists else 0,
         "sources": {},
     }
+    source_count = 0
     if db_exists:
         db = get_db()
         all_kinds = [
@@ -135,20 +137,24 @@ def show_cache_status_json() -> None:
                     "updated_at": table_updated_at(db, kind),
                     "fts": f"{kind}_fts" in db.table_names(),
                 }
-    print(json_mod.dumps(info, indent=2))
+                source_count += 1
+    env = _envelope("cache-status", info, count=source_count)
+    print(json_mod.dumps(env, indent=2))
 
 
 # ── history display ─────────────────────────────────────────────────────────
 
 def _show_history(name: str, as_json: bool = False) -> None:
     from brew_hop_search.history import get_history
+    from brew_hop_search.display import _envelope
     import json as json_mod
     rows = get_history(name)
     if not rows:
         print(dim(f"  no history for {name!r} — run with -i first to build the log"), file=sys.stderr)
         return
     if as_json:
-        print(json_mod.dumps(rows, indent=2, default=str))
+        env = _envelope("history", {"versions": rows}, query=name, count=len(rows))
+        print(json_mod.dumps(env, indent=2, default=str))
         return
     print(f"  {bold('version history')} for {green(name)}")
     for r in rows:
@@ -444,7 +450,7 @@ def main(argv=None):
 
     # ── output ──
     if args.json:
-        output_json(all_results)
+        output_json(all_results, query=query, limit=limit, offset=offset)
         return
     if args.csv:
         output_csv(all_results)

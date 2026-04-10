@@ -176,8 +176,11 @@ def test_casks_only(snap, testdb):
 
 
 def test_json_output(snap, testdb):
-    """JSON output format."""
-    snap.assert_match(_run_with_db(testdb, "--json", "node"))
+    """JSON output format with meta envelope."""
+    output = _run_with_db(testdb, "--json", "node")
+    # Normalize dynamic date field for snapshot stability
+    output = re.sub(r'"date": "[^"]+"', '"date": "NORMALIZED"', output)
+    snap.assert_match(output)
 
 
 def test_version_flag(snap):

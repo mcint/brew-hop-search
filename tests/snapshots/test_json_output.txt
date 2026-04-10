@@ -1,14 +1,28 @@
 {
-  "formula": [
-    {
-      "name": "node",
-      "desc": "Platform built on V8 to build network applications",
-      "homepage": "https://nodejs.org/",
-      "versions": {
-        "stable": "21.6.1"
-      },
-      "revision": 0
-    }
-  ],
-  "cask": []
+  "meta": {
+    "command": "search",
+    "query": "node",
+    "sources": [
+      "formula",
+      "cask"
+    ],
+    "limit": 20,
+    "total": 5,
+    "count": 1,
+    "date": "NORMALIZED"
+  },
+  "results": {
+    "formula": [
+      {
+        "name": "node",
+        "desc": "Platform built on V8 to build network applications",
+        "homepage": "https://nodejs.org/",
+        "versions": {
+          "stable": "21.6.1"
+        },
+        "revision": 0
+      }
+    ],
+    "cask": []
+  }
 }

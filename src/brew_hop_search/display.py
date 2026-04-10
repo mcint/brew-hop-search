@@ -232,13 +232,48 @@ def output_grep(all_results: list[tuple]) -> None:
             print(f"  {desc}")
 
 
-def output_json(all_results: list[tuple]) -> None:
-    combined = {}
-    for kind, results, *_ in all_results:
-        combined[kind] = results
-    if len(all_results) == 1:
-        combined = combined[all_results[0][0]]
-    print(json.dumps(combined, indent=2))
+def _envelope(command: str, results, **meta_fields) -> dict:
+    """Wrap results in a self-describing meta envelope.
+
+    Fields with None values are omitted.
+    """
+    from datetime import datetime, timezone
+    meta = {"command": command}
+    for k, v in meta_fields.items():
+        if v is not None:
+            meta[k] = v
+    meta["date"] = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    out = {"meta": meta}
+    if isinstance(results, dict):
+        out.update(results)
+    else:
+        out["results"] = results
+    return out
+
+
+def output_json(all_results: list[tuple], *,
+                query: str = "", limit: int = 20, offset: int = 0) -> None:
+    results = {}
+    count = 0
+    sources = []
+    total = 0
+    for kind, items, *rest in all_results:
+        results[kind] = items
+        count += len(items)
+        sources.append(kind)
+        if rest:
+            total += rest[-1] or 0  # source_count is last element
+    env = _envelope(
+        "search",
+        {"results": results},
+        query=query or None,
+        sources=sources,
+        limit=limit if limit < 999999 else None,
+        offset=offset if offset else None,
+        total=total if total else None,
+        count=count,
+    )
+    print(json.dumps(env, indent=2))
 
 
 # ── tabular output formats ─────────────────────────────────────────────────

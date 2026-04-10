@@ -7,7 +7,7 @@ import sys
 
 from brew_hop_search.cache import get_db, table_exists
 from brew_hop_search.display import (
-    bold, dim, green, yellow, cyan, red, magenta, status_line,
+    bold, dim, green, yellow, cyan, red, magenta, status_line, _envelope,
 )
 
 
@@ -170,10 +170,13 @@ def display_outdated(data: dict, as_json: bool = False,
     casks = data.get("casks", [])
 
     if as_json:
+        total = len(formulae) + len(casks)
         if diff_data:
-            print(json.dumps({"bhs": data, "brew": diff_data}, indent=2))
+            env = _envelope("outdated", {"bhs": data, "brew": diff_data},
+                            count=total, mode="diff")
         else:
-            print(json.dumps(data, indent=2))
+            env = _envelope("outdated", data, count=total)
+        print(json.dumps(env, indent=2))
         return
 
     if diff_data:
