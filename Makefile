@@ -1,4 +1,4 @@
-.PHONY: test build readme tag release release-rc release-yes clean help
+.PHONY: test build readme tag release release-rc release-yes clean help versions publish publish-test bump bump-dev bump-release
 
 VERSION := $(shell sed -n 's/^__version__ = "\([^"]*\)"/\1/p' src/brew_hop_search/__init__.py)
 
@@ -35,11 +35,28 @@ release-yes: ## Unattended release (prompts pre-answered)
 dry-run: ## Dry-run release (show plan without executing)
 	./scripts/release.sh --dry-run
 
-bump: ## Bump patch version
+bump: ## Bump patch version (0.3.1 → 0.3.2)
 	./scripts/bump-version.sh
+
+bump-dev: ## Bump + tag .dev0 (0.3.1 → 0.3.2.dev0; no-op if already dev)
+	./scripts/bump-version.sh --dev
+
+bump-release: ## Strip .devN (0.3.2.dev0 → 0.3.2; no-op if no dev)
+	./scripts/bump-version.sh --release
 
 clean: ## Remove build artifacts
 	rm -rf dist/ build/ *.egg-info src/*.egg-info
 
 version: ## Show current version
 	@echo $(VERSION)
+
+versions: ## List versions published on PyPI + TestPyPI
+	@. scripts/_guards.sh; \
+	 echo "# pypi"; pypi_versions pypi; \
+	 echo "# testpypi"; pypi_versions testpypi
+
+publish-test: ## Build + publish current version to TestPyPI (with guards)
+	./scripts/publish.sh
+
+publish: ## Build + publish current version to PyPI (with guards)
+	./scripts/publish.sh --release

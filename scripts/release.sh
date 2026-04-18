@@ -17,6 +17,10 @@
 #   ./scripts/release.sh --dry-run      # see the plan
 set -euo pipefail
 
+here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=_guards.sh
+. "$here/_guards.sh"
+
 # ── Flags ────────────────────────────────────────────────────
 YES=false
 DRY=false
@@ -61,6 +65,23 @@ VERSION=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TAG=""
 
+# ── Auto-promote .devN → release ─────────────────────────────
+# If __version__ is X.Y.Z.devN, strip the suffix before tagging so the tag
+# and the release line up. Commit the promotion (silently no-op if not dev).
+if [[ "$VERSION" == *.dev* ]]; then
+    if $DRY; then
+        promoted=${VERSION%.dev*}
+        echo "(dry-run: would promote $VERSION → $promoted and commit)"
+        VERSION="$promoted"
+    else
+        ./scripts/bump-version.sh --release
+        VERSION=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
+        git add "$INIT_FILE" pyproject.toml
+        git commit -m "Promote to release v${VERSION}" -q
+        echo "✓ promoted to release v${VERSION}"
+    fi
+fi
+
 echo "═══════════════════════════════════════════════════════"
 echo "  brew-hop-search release process"
 echo "  version: $VERSION  branch: $BRANCH"
@@ -76,6 +97,23 @@ if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; th
     echo
     confirm "Continue anyway?" || exit 1
 fi
+
+# ── Step 0: PyPI preflight ───────────────────────────────────
+echo "── Step 0: PyPI version check ─────────────────────────"
+if $DRY; then
+    echo "(dry-run: would check pypi + testpypi for v$VERSION)"
+else
+    if ! guard_pypi_unique "$VERSION" pypi; then
+        echo "Run 'make versions' to see all published versions." >&2
+        exit 1
+    fi
+    if ! guard_pypi_unique "$VERSION" testpypi; then
+        echo "(testpypi collision — ok to --skip-tag and proceed to pypi, or bump)" >&2
+        confirm "Continue to pypi anyway?" || exit 1
+    fi
+    echo "✓ $VERSION is unpublished on pypi + testpypi"
+fi
+echo
 
 # ── Step 1: Test ─────────────────────────────────────────────
 echo "── Step 1: Run tests ──────────────────────────────────"
