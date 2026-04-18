@@ -252,22 +252,29 @@ def _envelope(command: str, results, **meta_fields) -> dict:
 
 
 def output_json(all_results: list[tuple], *,
-                query: str = "", limit: int = 20, offset: int = 0) -> None:
-    results = {}
+                query: str = "", limit: int = 20, offset: int = 0,
+                mode: str = "full") -> None:
     count = 0
     sources = []
     total = 0
     for kind, items, *rest in all_results:
-        results[kind] = items
         count += len(items)
         sources.append(kind)
         if rest:
             total += rest[-1] or 0  # source_count is last element
+    if mode == "short":
+        payload = {"results": _all_rows(all_results)}
+    else:
+        grouped: dict = {}
+        for kind, items, *_ in all_results:
+            grouped[kind] = items
+        payload = {"results": grouped}
     env = _envelope(
         "search",
-        {"results": results},
+        payload,
         query=query or None,
         sources=sources,
+        mode=mode if mode != "full" else None,
         limit=limit if limit < 999999 else None,
         offset=offset if offset else None,
         total=total if total else None,

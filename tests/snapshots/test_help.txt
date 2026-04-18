@@ -1,4 +1,4 @@
-usage: brew-hop-search [-fcitL] [-gq|--json|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+usage: brew-hop-search [-fcitL] [-gq|--json[=MODE]|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
@@ -19,7 +19,8 @@ sources (composable, default: remote API):
 output:
   -g, --grep            tab-separated for piping
   -q, --quiet           results only (for grep/fzf)
-  --json                raw JSON
+  --json [MODE]         JSON output; MODE=full (default) or short (compact row
+                        fields)
   --csv                 CSV output
   --tsv                 tab-separated with header
   --table               aligned columns (like sqlite3 -column)

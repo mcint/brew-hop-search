@@ -230,7 +230,7 @@ def _show_version(level: int) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
-        usage="%(prog)s [-fcitL] [-gq|--json|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
+        usage="%(prog)s [-fcitL] [-gq|--json[=MODE]|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -255,8 +255,9 @@ def main(argv=None):
                      help="tab-separated for piping")
     fmt.add_argument("-q", "--quiet", action="store_true",
                      help="results only (for grep/fzf)")
-    fmt.add_argument("--json", action="store_true",
-                     help="raw JSON")
+    fmt.add_argument("--json", nargs="?", const="full", default=None,
+                     choices=["full", "short"], metavar="MODE",
+                     help="JSON output; MODE=full (default) or short (compact row fields)")
     fmt.add_argument("--csv", action="store_true",
                      help="CSV output")
     fmt.add_argument("--tsv", action="store_true",
@@ -294,7 +295,12 @@ def main(argv=None):
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
                     help=argparse.SUPPRESS)
 
-    args = ap.parse_args(argv)
+    # Normalize bare '--json' → '--json=full' so it doesn't swallow the
+    # following positional as its value. '--json=short' / '--json=full' pass
+    # through untouched.
+    raw = list(sys.argv[1:] if argv is None else argv)
+    normalized = ["--json=full" if a == "--json" else a for a in raw]
+    args = ap.parse_args(normalized)
 
     # ── background refresh mode ──
     if getattr(args, "_bg_refresh", None):
@@ -450,7 +456,8 @@ def main(argv=None):
 
     # ── output ──
     if args.json:
-        output_json(all_results, query=query, limit=limit, offset=offset)
+        output_json(all_results, query=query, limit=limit, offset=offset,
+                    mode=args.json)
         return
     if args.csv:
         output_csv(all_results)

@@ -50,7 +50,7 @@ $ brew-hop-search -q python | fzf
 {{TABLE_OUTPUT}}
 ```
 
-Also: `--tsv`, `--json`, `--sql`, `-g` (grep).
+Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (grep).
 
 ## Cache status (`-C`)
 
