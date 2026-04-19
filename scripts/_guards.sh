@@ -53,13 +53,12 @@ guard_pypi_unique() {
 }
 
 guard_wheel_at_tag() {
-    # Quick-tier identity check (see claude-collab/release-flow.md).
-    # Verifies the wheel on disk declares the tag's version AND was built
-    # from a clean tree at the tagged commit — by reading BUILD_COMMIT and
-    # BUILD_DIRTY from the packaged _build_info.py.
-    #
-    # Full-tier (rebuild-and-RECORD-diff) is not implemented here; add if
-    # a dirty-build ever slips past the quick check.
+    # Content-identity check (see claude-collab/release-flow.md).
+    # Verifies the wheel on disk:
+    #   1. was built from a clean tree at the tagged commit (BUILD_COMMIT +
+    #      BUILD_DIRTY in the packaged _build_info.py), AND
+    #   2. the .py files embedded in the wheel are byte-identical to the
+    #      current source tree (which, if HEAD==tag, proves wheel == tag).
     local version="$1"
     if [ -z "$version" ]; then
         echo "guard_wheel_at_tag: version required" >&2
@@ -99,6 +98,30 @@ guard_wheel_at_tag() {
         fi
         if [ "$wheel_dirty" = "True" ]; then
             echo "✗ ${whl}: built from a dirty tree (BUILD_DIRTY=True)" >&2
+            failed=1
+        fi
+        # Content check: every .py file in the wheel's brew_hop_search/ tree
+        # matches the on-disk src/brew_hop_search/ tree. Skip _build_info.py
+        # (generated per build; not in source) and dist-info metadata.
+        local tmp; tmp=$(mktemp -d)
+        unzip -q "$whl" 'brew_hop_search/*' -d "$tmp" 2>/dev/null || true
+        local diffs=""
+        while IFS= read -r rel; do
+            [[ "$rel" == *"_build_info.py" ]] && continue
+            local wheel_file="$tmp/$rel"
+            local tree_file="src/$rel"
+            if [ ! -f "$tree_file" ]; then
+                diffs+="  ✗ wheel has $rel, source tree does not"$'\n'
+                continue
+            fi
+            if ! cmp -s "$wheel_file" "$tree_file"; then
+                diffs+="  ✗ content differs: $rel"$'\n'
+            fi
+        done < <(cd "$tmp" && find brew_hop_search -type f -name '*.py')
+        rm -rf "$tmp"
+        if [ -n "$diffs" ]; then
+            echo "✗ ${whl}: wheel content != current tree:" >&2
+            printf '%s' "$diffs" >&2
             failed=1
         fi
     done
