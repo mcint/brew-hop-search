@@ -1,3 +1,6 @@
+# _guards.sh uses bash-only process substitution; default /bin/sh can't parse it.
+SHELL := /bin/bash
+
 .PHONY: test build readme tag release release-rc release-test release-yes clean help versions publish publish-test bump bump-dev bump-release
 
 VERSION := $(shell sed -n 's/^__version__ = "\([^"]*\)"/\1/p' src/brew_hop_search/__init__.py)
