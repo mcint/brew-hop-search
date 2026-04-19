@@ -328,17 +328,39 @@ def main(argv=None):
     # ── outdated mode ──
     if args.outdated:
         from brew_hop_search.outdated import (
-            collect_outdated, collect_outdated_fast, collect_outdated_brew,
-            display_outdated,
+            collect_outdated_fast, collect_outdated_brew,
+            display_outdated, _filter_kinds,
         )
-        if args.brew_verify:
-            # Run both: fast (local) and brew (authoritative), show diff
-            fast_data = collect_outdated_fast()
-            brew_data = collect_outdated_brew()
-            display_outdated(fast_data, as_json=args.json, diff_data=brew_data)
+        # Verbosity: same scale as search (0=quiet, 1=default, 2=-v, 3=-vv).
+        if args.quiet:
+            o_verbose = 0
         else:
-            data = collect_outdated()
-            display_outdated(data, as_json=args.json)
+            o_verbose = 1 + args.verbose
+        kinds = _filter_kinds(args.formulae, args.casks)
+        # Format flag priority: json > csv > tsv > table > sql > grep > default.
+        fmt = None
+        if args.csv:
+            fmt = "csv"
+        elif args.tsv:
+            fmt = "tsv"
+        elif args.table:
+            fmt = "table"
+        elif args.sql:
+            fmt = "sql"
+        elif args.grep:
+            fmt = "grep"
+        # Suppress progress stderr when output must be silent
+        silent_progress = (o_verbose == 0) or bool(args.json) or (fmt is not None)
+        if args.brew_verify:
+            fast_data = collect_outdated_fast()
+            brew_data = collect_outdated_brew(silent=silent_progress)
+            display_outdated(fast_data, kinds=kinds, verbose=o_verbose,
+                             as_json=args.json, fmt=fmt, diff_data=brew_data)
+        else:
+            from brew_hop_search.outdated import collect_outdated
+            data = collect_outdated(silent=silent_progress)
+            display_outdated(data, kinds=kinds, verbose=o_verbose,
+                             as_json=args.json, fmt=fmt)
         return
 
     # Join multi-word query

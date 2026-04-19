@@ -1,0 +1,6 @@
+  # outdated formulae (2)
+    python@3.13  3.13.1 → 3.13.2
+    wget  1.24.4 → 1.24.5_1  [pinned]
+  -- brew upgrade • brew pin <name> • -H <name> for history
+  -- use --brew-verify to diff against brew's authoritative results
+  [outdated] ✓ 3 outdated (local)

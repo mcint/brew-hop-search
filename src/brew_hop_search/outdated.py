@@ -5,10 +5,13 @@ import json
 import subprocess
 import sys
 
-from brew_hop_search.cache import get_db, table_exists
+from brew_hop_search.cache import get_db, table_count, table_exists
 from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, red, magenta, status_line, _envelope,
 )
+
+
+ALL_KINDS = frozenset({"formulae", "casks"})
 
 
 def _brew_outdated_json() -> list[dict]:
@@ -81,6 +84,7 @@ def collect_outdated_fast() -> dict:
                     "installed_versions": [installed_ver],
                     "current_version": api_full,
                     "pinned": pinned,
+                    "revision": api_rev,
                 }
                 if keg_only:
                     entry["keg_only"] = True
@@ -151,6 +155,53 @@ def _outdated_current(entry: dict) -> str:
     return entry.get("current_version", "?")
 
 
+def _tag_strs(entry: dict, kind: str) -> list[str]:
+    """Plain (uncolored) tag strings for row output."""
+    tags = []
+    if kind == "formulae":
+        if entry.get("pinned"):
+            tags.append("pinned")
+        if entry.get("keg_only"):
+            tags.append("keg-only")
+    else:
+        if entry.get("auto_updates"):
+            tags.append("auto-updates")
+    return tags
+
+
+def _source_char(kind: str) -> str:
+    return "f" if kind == "formulae" else "c"
+
+
+def _filter_kinds(args_formulae: bool, args_casks: bool) -> set:
+    """Compute kinds set from -f/-c flags (neither set = both)."""
+    if not args_formulae and not args_casks:
+        return set(ALL_KINDS)
+    kinds = set()
+    if args_formulae:
+        kinds.add("formulae")
+    if args_casks:
+        kinds.add("casks")
+    return kinds
+
+
+def _rows_for(data: dict, kinds: set) -> list[dict]:
+    """Flatten outdated data to row dicts (formulae first, then casks)."""
+    rows = []
+    for kind in ("formulae", "casks"):
+        if kind not in kinds:
+            continue
+        for entry in data.get(kind, []):
+            rows.append({
+                "source": _source_char(kind),
+                "name": _outdated_name(entry),
+                "installed": _outdated_installed(entry),
+                "current": _outdated_current(entry),
+                "tags": ",".join(_tag_strs(entry, kind)),
+            })
+    return rows
+
+
 def _fmt_outdated_line(name: str, installed: str, current: str, tags: list[str],
                        color_fn=green, prefix: str = " ") -> str:
     """Format one outdated line with optional diff prefix."""
@@ -158,36 +209,213 @@ def _fmt_outdated_line(name: str, installed: str, current: str, tags: list[str],
     return f"  {prefix} {bold(color_fn(name))}  {dim(installed)} → {current}{tag_str}"
 
 
-def display_outdated(data: dict, as_json: bool = False,
-                     diff_data: dict | None = None) -> None:
-    """Display outdated packages with upgrade/pin hints.
+# ── format outputs ─────────────────────────────────────────────────────────
 
-    If diff_data is provided, show a package-matched diff between
-    the fast (data) and brew-verify (diff_data) results using
-    +/-/~ prefixes.
-    """
-    formulae = data.get("formulae", [])
-    casks = data.get("casks", [])
+def output_outdated_grep(data: dict, kinds: set) -> None:
+    for row in _rows_for(data, kinds):
+        print(f"{row['source']}\t{row['name']}\t{row['installed']}\t{row['current']}\t{row['tags']}")
 
-    if as_json:
-        total = len(formulae) + len(casks)
-        if diff_data:
-            env = _envelope("outdated", {"bhs": data, "brew": diff_data},
-                            count=total, mode="diff")
-        else:
-            env = _envelope("outdated", data, count=total)
+
+def output_outdated_quiet(data: dict, kinds: set) -> None:
+    """Tab-separated, no source column, no headers, no color."""
+    for row in _rows_for(data, kinds):
+        print(f"{row['name']}\t{row['installed']}\t{row['current']}\t{row['tags']}")
+
+
+def output_outdated_csv(data: dict, kinds: set) -> None:
+    import csv
+    import io
+    rows = _rows_for(data, kinds)
+    if not rows:
+        return
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=["source", "name", "installed", "current", "tags"])
+    w.writeheader()
+    w.writerows(rows)
+    print(buf.getvalue(), end="")
+
+
+def output_outdated_tsv(data: dict, kinds: set) -> None:
+    rows = _rows_for(data, kinds)
+    if not rows:
+        return
+    cols = ["source", "name", "installed", "current", "tags"]
+    print("\t".join(cols))
+    for r in rows:
+        print("\t".join(str(r.get(c, "")) for c in cols))
+
+
+def output_outdated_table(data: dict, kinds: set) -> None:
+    rows = _rows_for(data, kinds)
+    if not rows:
+        return
+    cols = ["source", "name", "installed", "current", "tags"]
+    headers = {"source": "S", "name": "Name", "installed": "Installed",
+               "current": "Current", "tags": "Tags"}
+    widths = {}
+    for col in cols:
+        w = len(headers[col])
+        for r in rows:
+            w = max(w, len(str(r.get(col, ""))))
+        widths[col] = w
+    hdr = "  ".join(headers[c].ljust(widths[c]) for c in cols)
+    sep = "  ".join("-" * widths[c] for c in cols)
+    print(hdr)
+    print(sep)
+    for r in rows:
+        print("  ".join(str(r.get(c, "")).ljust(widths[c]) for c in cols))
+
+
+def output_outdated_sql(data: dict, kinds: set) -> None:
+    """Kind-specific INSERT statements with typed flag columns."""
+    any_output = False
+    if "formulae" in kinds and data.get("formulae"):
+        print("CREATE TABLE IF NOT EXISTS outdated_formula (name TEXT, installed TEXT, current TEXT, pinned INTEGER, keg_only INTEGER);")
+        for e in data["formulae"]:
+            name = _outdated_name(e).replace("'", "''")
+            installed = _outdated_installed(e).replace("'", "''")
+            current = _outdated_current(e).replace("'", "''")
+            pinned = 1 if e.get("pinned") else 0
+            keg_only = 1 if e.get("keg_only") else 0
+            print(f"INSERT INTO outdated_formula VALUES ('{name}', '{installed}', '{current}', {pinned}, {keg_only});")
+        any_output = True
+    if "casks" in kinds and data.get("casks"):
+        print("CREATE TABLE IF NOT EXISTS outdated_cask (name TEXT, installed TEXT, current TEXT, auto_updates INTEGER);")
+        for e in data["casks"]:
+            name = _outdated_name(e).replace("'", "''")
+            installed = _outdated_installed(e).replace("'", "''")
+            current = _outdated_current(e).replace("'", "''")
+            auto = 1 if e.get("auto_updates") else 0
+            print(f"INSERT INTO outdated_cask VALUES ('{name}', '{installed}', '{current}', {auto});")
+        any_output = True
+
+
+def output_outdated_json(data: dict, kinds: set, *, mode: str = "full",
+                         diff_data: dict | None = None) -> None:
+    """Emit JSON with meta envelope. `short` mode = compact row form."""
+    filtered = {k: v for k, v in data.items() if k in kinds}
+    if diff_data is not None:
+        filtered_diff = {k: v for k, v in diff_data.items() if k in kinds}
+        total = sum(len(filtered.get(k, [])) for k in kinds) + \
+                sum(len(filtered_diff.get(k, [])) for k in kinds)
+        env = _envelope("outdated",
+                        {"bhs": filtered, "brew": filtered_diff},
+                        count=total, mode="diff")
         print(json.dumps(env, indent=2))
         return
+    if mode == "short":
+        rows = _rows_for(data, kinds)
+        env = _envelope("outdated", {"results": rows},
+                        count=len(rows), mode="short")
+    else:
+        total = sum(len(filtered.get(k, [])) for k in kinds)
+        env = _envelope("outdated", filtered, count=total)
+    print(json.dumps(env, indent=2))
 
-    if diff_data:
-        _display_outdated_diff(data, diff_data)
+
+# ── human/default output ──────────────────────────────────────────────────
+
+def _source_summary_header(kinds: set) -> str:
+    """-v summary like: -- comparing installed:f (460) vs formula (8314) index."""
+    db = get_db()
+    parts = []
+    if "formulae" in kinds:
+        ic = table_count(db, "installed_formula") or 0
+        fc = table_count(db, "formula") or 0
+        parts.append(f"installed:f ({ic}) vs formula ({fc}) index")
+    if "casks" in kinds:
+        ic = table_count(db, "installed_cask") or 0
+        cc = table_count(db, "cask") or 0
+        parts.append(f"installed:c ({ic}) vs cask ({cc}) index")
+    return dim(f"  -- comparing {' • '.join(parts)}")
+
+
+def _vv_details(entry: dict, kind: str) -> str | None:
+    """Per-entry raw detail line for -vv, or None if nothing to show."""
+    bits = []
+    if kind == "formulae":
+        rev = entry.get("revision")
+        if rev:
+            bits.append(f"revision={rev}")
+        if entry.get("pinned"):
+            bits.append("pinned=true")
+    else:
+        if entry.get("auto_updates"):
+            bits.append("auto_updates=true")
+    installed_list = entry.get("installed_versions") or []
+    if len(installed_list) > 1:
+        bits.append(f"installed_versions={len(installed_list)}")
+    return dim(f"      {' '.join(bits)}") if bits else None
+
+
+def display_outdated(data: dict, *, kinds: set | None = None,
+                     verbose: int = 1,
+                     as_json: str | bool | None = None,
+                     fmt: str | None = None,
+                     diff_data: dict | None = None) -> None:
+    """Display outdated packages.
+
+    Args:
+        data: {"formulae": [...], "casks": [...]} from collect_outdated*.
+        kinds: which kinds to show (subset of {"formulae","casks"}).
+               None = both.
+        verbose: 0 (quiet) | 1 (default) | 2 (-v) | 3 (-vv).
+        as_json: "full" | "short" | truthy for full | None/False disables.
+        fmt: "grep" | "csv" | "tsv" | "table" | "sql" | None.
+        diff_data: if provided, diff mode (brew-verify).
+    """
+    if kinds is None:
+        kinds = set(ALL_KINDS)
+
+    # JSON takes precedence over other format flags (per spec priority).
+    if as_json:
+        mode = as_json if isinstance(as_json, str) else "full"
+        output_outdated_json(data, kinds, mode=mode, diff_data=diff_data)
         return
+
+    # Machine formats (bypass verbosity). Priority: csv > tsv > table > sql > grep
+    if diff_data is not None and fmt in ("csv", "tsv", "table", "sql", "grep"):
+        _emit_diff_machine(data, diff_data, kinds, fmt)
+        return
+
+    if fmt == "csv":
+        output_outdated_csv(data, kinds)
+        return
+    if fmt == "tsv":
+        output_outdated_tsv(data, kinds)
+        return
+    if fmt == "table":
+        output_outdated_table(data, kinds)
+        return
+    if fmt == "sql":
+        output_outdated_sql(data, kinds)
+        return
+    if fmt == "grep":
+        output_outdated_grep(data, kinds)
+        return
+
+    # Quiet (level 0): tab rows, no headers, no color, no footer.
+    if verbose <= 0:
+        output_outdated_quiet(data, kinds)
+        return
+
+    # Diff human view
+    if diff_data is not None:
+        _display_outdated_diff(data, diff_data, kinds=kinds, verbose=verbose)
+        return
+
+    formulae = data.get("formulae", []) if "formulae" in kinds else []
+    casks = data.get("casks", []) if "casks" in kinds else []
+
+    # Level 2+ source summary
+    if verbose >= 2:
+        print(_source_summary_header(kinds))
 
     if not formulae and not casks:
         print(dim("  all packages are up to date"))
         return
 
-    if formulae:
+    if "formulae" in kinds and formulae:
         print(f"  {dim('#')} {green('outdated formulae')} {dim(f'({len(formulae)})')}")
         for f in formulae:
             name = _outdated_name(f)
@@ -198,9 +426,19 @@ def display_outdated(data: dict, as_json: bool = False,
                 tags.append(yellow("[pinned]"))
             if f.get("keg_only"):
                 tags.append(dim("[keg-only]"))
-            print(_fmt_outdated_line(name, installed, current, tags, green))
+            if verbose >= 2:
+                # Prefix with source indicator column.
+                src = green("f")
+                print(f"  {src} {bold(green(name))}  {dim(installed)} → {current}"
+                      + ("  " + " ".join(tags) if tags else ""))
+            else:
+                print(_fmt_outdated_line(name, installed, current, tags, green))
+            if verbose >= 3:
+                det = _vv_details(f, "formulae")
+                if det:
+                    print(det)
 
-    if casks:
+    if "casks" in kinds and casks:
         print(f"  {dim('#')} {yellow('outdated casks')} {dim(f'({len(casks)})')}")
         for c in casks:
             name = _outdated_name(c)
@@ -209,13 +447,123 @@ def display_outdated(data: dict, as_json: bool = False,
             tags = []
             if c.get("auto_updates"):
                 tags.append(dim("[auto-updates]"))
-            print(_fmt_outdated_line(name, installed, current, tags, yellow))
+            if verbose >= 2:
+                src = yellow("c")
+                print(f"  {src} {bold(yellow(name))}  {dim(installed)} → {current}"
+                      + ("  " + " ".join(tags) if tags else ""))
+            else:
+                print(_fmt_outdated_line(name, installed, current, tags, yellow))
+            if verbose >= 3:
+                det = _vv_details(c, "casks")
+                if det:
+                    print(det)
 
     print(dim(f"  -- brew upgrade • brew pin <name> • -H <name> for history"))
     print(dim(f"  -- use --brew-verify to diff against brew's authoritative results"))
 
 
-def _display_outdated_diff(bhs: dict, brew: dict) -> None:
+# ── diff mode ─────────────────────────────────────────────────────────────
+
+def _diff_rows(bhs: dict, brew: dict, kinds: set) -> list[dict]:
+    """Machine rows for diff mode: every (kind, name) with reporter label."""
+    rows = []
+    for kind in ("formulae", "casks"):
+        if kind not in kinds:
+            continue
+        bhs_map = {_outdated_name(e): e for e in bhs.get(kind, [])}
+        brew_map = {_outdated_name(e): e for e in brew.get(kind, [])}
+        all_names = sorted(set(bhs_map) | set(brew_map))
+        for name in all_names:
+            b = bhs_map.get(name)
+            br = brew_map.get(name)
+            entry = br or b  # prefer brew for tags if both present
+            if b and br:
+                reporter = "both"
+                installed = _outdated_installed(br)
+                current = _outdated_current(br)
+                agree = _outdated_current(b) == _outdated_current(br)
+            elif br:
+                reporter = "brew"
+                installed = _outdated_installed(br)
+                current = _outdated_current(br)
+                agree = False
+            else:
+                reporter = "bhs"
+                installed = _outdated_installed(b)
+                current = _outdated_current(b)
+                agree = False
+            rows.append({
+                "source": _source_char(kind),
+                "reporter": reporter,
+                "name": name,
+                "installed": installed,
+                "current": current,
+                "versions_agree": "1" if agree else "0",
+                "tags": ",".join(_tag_strs(entry or {}, kind)),
+            })
+    return rows
+
+
+def _emit_diff_machine(bhs: dict, brew: dict, kinds: set, fmt: str) -> None:
+    """Emit diff in machine formats (csv/tsv/table/sql/grep) with union rows."""
+    rows = _diff_rows(bhs, brew, kinds)
+    cols = ["source", "reporter", "name", "installed", "current",
+            "versions_agree", "tags"]
+    if fmt == "grep":
+        for r in rows:
+            print("\t".join(str(r.get(c, "")) for c in cols))
+        return
+    if fmt == "tsv":
+        if not rows:
+            return
+        print("\t".join(cols))
+        for r in rows:
+            print("\t".join(str(r.get(c, "")) for c in cols))
+        return
+    if fmt == "csv":
+        import csv
+        import io
+        if not rows:
+            return
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+        print(buf.getvalue(), end="")
+        return
+    if fmt == "table":
+        if not rows:
+            return
+        headers = {c: c.capitalize() for c in cols}
+        headers["source"] = "S"
+        headers["versions_agree"] = "Agree"
+        widths = {c: max(len(headers[c]), *(len(str(r.get(c, ""))) for r in rows))
+                  for c in cols}
+        print("  ".join(headers[c].ljust(widths[c]) for c in cols))
+        print("  ".join("-" * widths[c] for c in cols))
+        for r in rows:
+            print("  ".join(str(r.get(c, "")).ljust(widths[c]) for c in cols))
+        return
+    if fmt == "sql":
+        if not rows:
+            return
+        print("CREATE TABLE IF NOT EXISTS outdated_diff (source TEXT, reporter TEXT, name TEXT, installed TEXT, current TEXT, versions_agree INTEGER, tags TEXT);")
+        for r in rows:
+            vals = (
+                f"'{r['source']}'",
+                f"'{r['reporter']}'",
+                "'" + r['name'].replace("'", "''") + "'",
+                "'" + r['installed'].replace("'", "''") + "'",
+                "'" + r['current'].replace("'", "''") + "'",
+                r['versions_agree'],
+                "'" + r['tags'].replace("'", "''") + "'",
+            )
+            print("INSERT INTO outdated_diff VALUES (" + ", ".join(vals) + ");")
+        return
+
+
+def _display_outdated_diff(bhs: dict, brew: dict, *, kinds: set | None = None,
+                           verbose: int = 1) -> None:
     """Show package-matched diff between bhs and brew-verify results.
 
     Prefixes:
@@ -224,10 +572,16 @@ def _display_outdated_diff(bhs: dict, brew: dict) -> None:
       -  only in bhs (brew disagrees)
       (space)  both agree
     """
+    if kinds is None:
+        kinds = set(ALL_KINDS)
+    if verbose >= 2:
+        print(_source_summary_header(kinds))
     for kind, label, color_fn in [
         ("formulae", "outdated formulae", green),
         ("casks", "outdated casks", yellow),
     ]:
+        if kind not in kinds:
+            continue
         bhs_list = bhs.get(kind, [])
         brew_list = brew.get(kind, [])
         bhs_map = {_outdated_name(e): e for e in bhs_list}
