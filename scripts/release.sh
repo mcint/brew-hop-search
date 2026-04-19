@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 # Interactive release process with checkpoints.
 #
-# Steps: test → build → review → tag → ff main → show publish command
-# Each step pauses for confirmation unless --yes is passed.
+# Flow (see claude-collab/release-flow.md):
+#   test → promote dev → tag → build → publish → ff main → post-bump
 #
 # Flags:
-#   --yes, -y      Auto-confirm all prompts (still stops on error)
-#   --dry-run, -n  Show what would happen without doing it
-#   --verbose, -V  Print each command before running it
-#   --rc           Pre-select rc tag (default)
-#   --release      Pre-select release tag
+#   --yes, -y        Auto-confirm all prompts (still stops on error)
+#   --dry-run, -n    Show what would happen without doing it
+#   --verbose, -V    Print each command before running it
+#   --rc             Pre-select rc tag (default interactive)
+#   --release        Pre-select release tag (promote)
+#   --skip-tag       Skip tagging step (for re-runs, already tagged)
+#   --skip-publish   Stop before publish (dry-publish mode)
+#   --testpypi       Publish to TestPyPI instead of PyPI
 #
 # Usage:
-#   ./scripts/release.sh                # interactive
-#   ./scripts/release.sh --yes --rc     # unattended rc build
-#   ./scripts/release.sh --dry-run      # see the plan
+#   ./scripts/release.sh                 # interactive
+#   ./scripts/release.sh --yes --release # unattended PyPI release
+#   ./scripts/release.sh --dry-run       # see the plan
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -25,7 +28,9 @@ here=$(cd "$(dirname "$0")" && pwd)
 YES=false
 DRY=false
 VERBOSE=false
-TAG_MODE="ask"  # ask | rc | release | skip
+TAG_MODE="ask"      # ask | rc | release | skip
+SKIP_PUBLISH=false
+PUBLISH_INDEX="pypi"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -35,6 +40,8 @@ while [ $# -gt 0 ]; do
         --rc) TAG_MODE="rc" ;;
         --release) TAG_MODE="release" ;;
         --skip-tag) TAG_MODE="skip" ;;
+        --skip-publish) SKIP_PUBLISH=true ;;
+        --testpypi) PUBLISH_INDEX="testpypi" ;;
         *) echo "Unknown flag: $1" >&2; exit 1 ;;
     esac
     shift
@@ -66,8 +73,6 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TAG=""
 
 # ── Auto-promote .devN → release ─────────────────────────────
-# If __version__ is X.Y.Z.devN, strip the suffix before tagging so the tag
-# and the release line up. Commit the promotion (silently no-op if not dev).
 if [[ "$VERSION" == *.dev* ]]; then
     if $DRY; then
         promoted=${VERSION%.dev*}
@@ -84,7 +89,7 @@ fi
 
 echo "═══════════════════════════════════════════════════════"
 echo "  brew-hop-search release process"
-echo "  version: $VERSION  branch: $BRANCH"
+echo "  version: $VERSION  branch: $BRANCH  index: $PUBLISH_INDEX"
 $DRY && echo "  MODE: dry-run (no changes will be made)"
 $YES && echo "  MODE: auto-confirm"
 echo "═══════════════════════════════════════════════════════"
@@ -101,17 +106,13 @@ fi
 # ── Step 0: PyPI preflight ───────────────────────────────────
 echo "── Step 0: PyPI version check ─────────────────────────"
 if $DRY; then
-    echo "(dry-run: would check pypi + testpypi for v$VERSION)"
+    echo "(dry-run: would check $PUBLISH_INDEX for v$VERSION)"
 else
-    if ! guard_pypi_unique "$VERSION" pypi; then
+    if ! guard_pypi_unique "$VERSION" "$PUBLISH_INDEX"; then
         echo "Run 'make versions' to see all published versions." >&2
         exit 1
     fi
-    if ! guard_pypi_unique "$VERSION" testpypi; then
-        echo "(testpypi collision — ok to --skip-tag and proceed to pypi, or bump)" >&2
-        confirm "Continue to pypi anyway?" || exit 1
-    fi
-    echo "✓ $VERSION is unpublished on pypi + testpypi"
+    echo "✓ $VERSION is unpublished on $PUBLISH_INDEX"
 fi
 echo
 
@@ -121,18 +122,8 @@ run uv run python -m pytest tests/ -x -q --tb=short
 echo "✓ Tests passed"
 echo
 
-# ── Step 2: Build ────────────────────────────────────────────
-echo "── Step 2: Build package ──────────────────────────────"
-run uv build
-echo
-if ! $DRY; then
-    echo "Built:"
-    ls -1 dist/*"${VERSION}"* 2>/dev/null || echo "(no matching dist files)"
-fi
-echo
-
-# ── Step 3: Review changes ───────────────────────────────────
-echo "── Step 3: Changes since last release ─────────────────"
+# ── Step 2: Review changes ───────────────────────────────────
+echo "── Step 2: Changes since last release ─────────────────"
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
     echo "Last tag: $LAST_TAG"
@@ -146,17 +137,17 @@ fi
 echo
 confirm "Review complete. Ready to tag?" || { echo "Aborted."; exit 1; }
 
-# ── Step 4: Tag ──────────────────────────────────────────────
+# ── Step 3: Tag ──────────────────────────────────────────────
 echo
-echo "── Step 4: Tag ──────────────────────────────────────"
+echo "── Step 3: Tag ──────────────────────────────────────"
 if [ "$TAG_MODE" = "ask" ]; then
     if $DRY; then
-        echo "(dry-run: would ask rc/release/skip, defaulting to rc)"
-        TAG_MODE="rc"
+        echo "(dry-run: would ask rc/release/skip, defaulting to release)"
+        TAG_MODE="release"
     else
         echo "  a) v${VERSION}-rcN  (release candidate)"
         echo "  b) v${VERSION}      (release)"
-        echo "  c) skip tagging"
+        echo "  c) skip tagging    (already tagged — re-run path)"
         read -rp "Choice [a/b/c]: " tag_choice
         case "$tag_choice" in
             a) TAG_MODE="rc" ;;
@@ -177,14 +168,47 @@ case "$TAG_MODE" in
         TAG="v${VERSION}"
         ;;
     skip)
-        echo "Skipped tagging."
+        TAG="v${VERSION}"
+        echo "Skipped tagging; assuming $TAG already points at HEAD."
         ;;
 esac
 echo
 
-# ── Step 5: Fast-forward main ────────────────────────────────
-if [ "$BRANCH" != "main" ]; then
-    echo "── Step 5: Fast-forward main ──────────────────────────"
+# ── Step 4: Build (after tagging, so _build_info records the tag) ──
+echo "── Step 4: Build package ──────────────────────────────"
+if ! $DRY; then
+    rm -rf dist/
+fi
+run uv build
+if ! $DRY; then
+    echo
+    echo "Built:"
+    ls -1 dist/*"${VERSION}"* 2>/dev/null || echo "(no matching dist files)"
+fi
+echo
+
+# ── Step 5: Publish ──────────────────────────────────────────
+if $SKIP_PUBLISH; then
+    echo "── Step 5: Publish (SKIPPED via --skip-publish) ──────"
+    echo "  resume with: ./scripts/publish.sh $([ "$PUBLISH_INDEX" = pypi ] && echo --release) --skip-build"
+    echo
+else
+    echo "── Step 5: Publish to $PUBLISH_INDEX ────────────────────"
+    if $DRY; then
+        echo "(dry-run: would call publish.sh --skip-build$([ "$PUBLISH_INDEX" = pypi ] && echo ' --release'))"
+    else
+        confirm "Publish v${VERSION} to ${PUBLISH_INDEX}?" || { echo "Aborted before publish."; exit 1; }
+        publish_args=(--skip-build)
+        [ "$PUBLISH_INDEX" = "pypi" ] && publish_args+=(--release)
+        ./scripts/publish.sh "${publish_args[@]}"
+    fi
+    echo "✓ Published"
+    echo
+fi
+
+# ── Step 6: Fast-forward main (only after publish) ───────────
+if [ "$BRANCH" != "main" ] && ! $SKIP_PUBLISH; then
+    echo "── Step 6: Fast-forward main ──────────────────────────"
     if git merge-base --is-ancestor main HEAD 2>/dev/null; then
         AHEAD=$(git rev-list main..HEAD --count)
         echo "main is $AHEAD commits behind $BRANCH"
@@ -198,19 +222,22 @@ if [ "$BRANCH" != "main" ]; then
     echo
 fi
 
-# ── Step 6: Publish commands ─────────────────────────────────
-echo "── Step 6: Publish ──────────────────────────────────"
-echo
-echo "# TestPyPI:"
-echo "uv publish --index testpypi --token \$UV_PUBLISH_TOKEN dist/*${VERSION}*"
-echo
-echo "# PyPI:"
-echo "uv publish --token \$UV_PUBLISH_TOKEN dist/*${VERSION}*"
+# ── Step 7: Post-publish bump to next .dev0 ──────────────────
+if [ "$TAG_MODE" = "release" ] && ! $SKIP_PUBLISH && ! $DRY; then
+    echo "── Step 7: Post-publish: bump dev version ─────────────"
+    ./scripts/bump-version.sh --dev
+    echo "(uncommitted — git diff to review; sweep with next commit)"
+    echo
+fi
+
+# ── Step 8: Push commands ────────────────────────────────────
+echo "── Step 8: Push ─────────────────────────────────────"
 echo
 if [ -n "$TAG" ]; then
-    echo "# Push tag + main:"
+    echo "# Push tag + branches:"
     echo "git push origin $TAG"
-    [ "$BRANCH" != "main" ] && echo "git push origin main"
 fi
+echo "git push origin $BRANCH"
+[ "$BRANCH" != "main" ] && ! $SKIP_PUBLISH && echo "git push origin main"
 echo
-echo "Done. Copy and run the commands above when ready."
+echo "Done."

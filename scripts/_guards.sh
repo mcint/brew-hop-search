@@ -52,38 +52,61 @@ guard_pypi_unique() {
     return 0
 }
 
-guard_wheel_fresh() {
+guard_wheel_at_tag() {
+    # Quick-tier identity check (see claude-collab/release-flow.md).
+    # Verifies the wheel on disk declares the tag's version AND was built
+    # from a clean tree at the tagged commit — by reading BUILD_COMMIT and
+    # BUILD_DIRTY from the packaged _build_info.py.
+    #
+    # Full-tier (rebuild-and-RECORD-diff) is not implemented here; add if
+    # a dirty-build ever slips past the quick check.
     local version="$1"
     if [ -z "$version" ]; then
-        echo "guard_wheel_fresh: version required" >&2
+        echo "guard_wheel_at_tag: version required" >&2
         return 2
     fi
     local tag="v${version}"
-    local tag_epoch=""
-    if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
-        # Use tagged commit's committer date (not the tag's own date,
-        # which can drift if the tag is moved).
-        tag_epoch=$(git log -1 --format=%ct "$tag")
-    fi
-    local stale=0
-    shopt -s nullglob
-    local files=( dist/*"${version}"*.whl dist/*"${version}"*.tar.gz )
-    shopt -u nullglob
-    if [ ${#files[@]} -eq 0 ]; then
-        echo "✗ No dist/ artifacts matching version $version." >&2
-        echo "  Build first: make build" >&2
+    if ! git rev-parse --verify "refs/tags/${tag}" >/dev/null 2>&1; then
+        echo "✗ tag ${tag} does not exist" >&2
         return 1
     fi
-    for f in "${files[@]}"; do
-        local file_epoch
-        file_epoch=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f")
-        if [ -n "$tag_epoch" ] && [ "$file_epoch" -lt "$tag_epoch" ]; then
-            echo "✗ $f predates tag $tag (rebuild needed)." >&2
-            stale=1
+    local tag_sha
+    tag_sha=$(git rev-parse "refs/tags/${tag}^{commit}")
+
+    shopt -s nullglob
+    local whls=( dist/*"${version}"*.whl )
+    shopt -u nullglob
+    if [ ${#whls[@]} -eq 0 ]; then
+        echo "✗ No dist/*${version}*.whl found." >&2
+        return 1
+    fi
+
+    local failed=0
+    for whl in "${whls[@]}"; do
+        local info
+        info=$(unzip -p "$whl" 'brew_hop_search/_build_info.py' 2>/dev/null || true)
+        if [ -z "$info" ]; then
+            echo "✗ ${whl}: missing _build_info.py (was hatch_build.py skipped?)" >&2
+            failed=1
+            continue
+        fi
+        local wheel_commit wheel_dirty
+        wheel_commit=$(printf '%s\n' "$info" | sed -n 's/^BUILD_COMMIT_FULL = "\([^"]*\)"/\1/p')
+        wheel_dirty=$(printf '%s\n' "$info" | sed -n 's/^BUILD_DIRTY = \(.*\)/\1/p')
+        if [ "$wheel_commit" != "$tag_sha" ]; then
+            echo "✗ ${whl}: built from ${wheel_commit:-?}, expected ${tag_sha}" >&2
+            failed=1
+        fi
+        if [ "$wheel_dirty" = "True" ]; then
+            echo "✗ ${whl}: built from a dirty tree (BUILD_DIRTY=True)" >&2
+            failed=1
         fi
     done
-    [ "$stale" -eq 0 ]
+    [ "$failed" -eq 0 ]
 }
+
+# Back-compat alias: older scripts may still call guard_wheel_fresh.
+guard_wheel_fresh() { guard_wheel_at_tag "$@"; }
 
 guard_dist_exists() {
     local version="$1"
