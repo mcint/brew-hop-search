@@ -10,14 +10,21 @@ import pytest
 from tests.snap import snap  # noqa: F401 (fixture)
 
 
+_VERSION_RE = re.compile(
+    r"\d+\.\d+\.\d+(?:\.dev\d+)?(?:\+[0-9a-f]+(?:\.dirty)?)?"
+)
+
+
 def run(*args: str) -> str:
-    """Run brew-hop-search and return stdout, stripping ANSI codes."""
+    """Run brew-hop-search and return stdout, stripping ANSI + version suffix."""
     result = subprocess.run(
         [sys.executable, "-m", "brew_hop_search.cli", *args],
         capture_output=True, text=True, timeout=30,
     )
     # Strip ANSI escape codes for stable snapshots
     clean = re.sub(r"\033\[[0-9;]*m", "", result.stdout + result.stderr)
+    # Mask version+commit so snapshots don't churn on every commit
+    clean = _VERSION_RE.sub("X.Y.Z", clean)
     return clean
 
 

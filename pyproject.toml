@@ -31,6 +31,10 @@ brewhs = "brew_hop_search.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/mcint/brew-hop-search"
+Documentation = "https://github.com/mcint/brew-hop-search/tree/main/docs"
+Changelog = "https://github.com/mcint/brew-hop-search/releases"
+Issues = "https://github.com/mcint/brew-hop-search/issues"
+Source = "https://github.com/mcint/brew-hop-search"
 
 [[tool.uv.index]]
 name = "testpypi"

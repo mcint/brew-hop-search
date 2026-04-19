@@ -1,4 +1,4 @@
-  brew-hop-search 0.3.2+e380faa.dirty
+  brew-hop-search X.Y.Z
   fast offline-first Homebrew formula/cask search
 
   usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
