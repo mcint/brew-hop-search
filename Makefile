@@ -1,4 +1,4 @@
-.PHONY: test build readme tag release release-rc release-yes clean help versions publish publish-test bump bump-dev bump-release
+.PHONY: test build readme tag release release-rc release-test release-yes clean help versions publish publish-test bump bump-dev bump-release
 
 VERSION := $(shell sed -n 's/^__version__ = "\([^"]*\)"/\1/p' src/brew_hop_search/__init__.py)
 
@@ -29,7 +29,10 @@ release: ## Interactive release (test → build → tag → ff main)
 release-rc: ## Unattended rc release
 	./scripts/release.sh --yes --rc
 
-release-yes: ## Unattended release (prompts pre-answered)
+release-test: ## Full release flow → TestPyPI (no main ff, no post-bump)
+	./scripts/release.sh --testpypi --release
+
+release-yes: ## Unattended PyPI release (prompts pre-answered)
 	./scripts/release.sh --yes --release
 
 dry-run: ## Dry-run release (show plan without executing)

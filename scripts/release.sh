@@ -206,8 +206,8 @@ else
     echo
 fi
 
-# ── Step 6: Fast-forward main (only after publish) ───────────
-if [ "$BRANCH" != "main" ] && ! $SKIP_PUBLISH; then
+# ── Step 6: Fast-forward main (only after real-PyPI publish) ─
+if [ "$BRANCH" != "main" ] && ! $SKIP_PUBLISH && [ "$PUBLISH_INDEX" = "pypi" ]; then
     echo "── Step 6: Fast-forward main ──────────────────────────"
     if git merge-base --is-ancestor main HEAD 2>/dev/null; then
         AHEAD=$(git rev-list main..HEAD --count)
@@ -222,8 +222,8 @@ if [ "$BRANCH" != "main" ] && ! $SKIP_PUBLISH; then
     echo
 fi
 
-# ── Step 7: Post-publish bump to next .dev0 ──────────────────
-if [ "$TAG_MODE" = "release" ] && ! $SKIP_PUBLISH && ! $DRY; then
+# ── Step 7: Post-publish bump to next .dev0 (PyPI only) ──────
+if [ "$TAG_MODE" = "release" ] && ! $SKIP_PUBLISH && ! $DRY && [ "$PUBLISH_INDEX" = "pypi" ]; then
     echo "── Step 7: Post-publish: bump dev version ─────────────"
     ./scripts/bump-version.sh --dev
     echo "(uncommitted — git diff to review; sweep with next commit)"
