@@ -289,21 +289,26 @@ def output_json(all_results: list[tuple], *,
 # ── tabular output formats ─────────────────────────────────────────────────
 
 def _extract_row(kind: str, item: dict) -> dict:
-    """Extract a flat row from a search result item."""
+    """Extract a flat row from a search result item.
+
+    Coerces None → "" so downstream formatters (table width, csv, sql)
+    never see a null string.
+    """
     if "token" in item:
         name = item["token"]
     else:
-        name = item.get("name", "")
+        name = item.get("name") or ""
     if kind == "cask":
-        ver = str(item.get("version", ""))
+        ver = str(item.get("version") or "")
     else:
-        ver = (item.get("versions") or {}).get("stable", item.get("version", ""))
+        versions = item.get("versions") or {}
+        ver = versions.get("stable") or item.get("version") or ""
     return {
         "source": kind.split("_")[-1][0] if "_" in kind else kind[0],
-        "name": name,
-        "version": ver,
-        "description": item.get("desc", ""),
-        "homepage": item.get("homepage", ""),
+        "name": name or "",
+        "version": ver or "",
+        "description": item.get("desc") or "",
+        "homepage": item.get("homepage") or "",
     }
 
 

@@ -245,6 +245,26 @@ def test_expect_multi_word_query(testdb):
 
 # ── display formatter tests ────────────────────────────────────────────────
 
+def test_extract_row_handles_none_fields():
+    """Regression: installed JSON sometimes has desc=null / homepage=null / versions.stable=null.
+    _extract_row must coerce those to "" so output_table doesn't TypeError on len(None).
+    """
+    from brew_hop_search.display import _extract_row, output_table
+    # All the fields that can legitimately be None in brew's JSON.
+    item = {
+        "name": "weirdpkg",
+        "desc": None,
+        "homepage": None,
+        "versions": {"stable": None},
+    }
+    row = _extract_row("installed_formula", item)
+    assert row["description"] == ""
+    assert row["homepage"] == ""
+    assert row["version"] == ""
+    # End-to-end: output_table should not raise.
+    output_table([("installed_formula", [item], 0, 1)])
+
+
 def test_fmt_formula(snap):
     """Formula formatting (single item).
 
