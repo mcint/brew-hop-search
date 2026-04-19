@@ -1,3 +1,6 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """Hatch build hook: write _build_info.py + package the man-page markdown.
 
 Bakes git metadata (commit, branch, tag, dirty flag, timestamp) into the
@@ -50,6 +53,9 @@ class CustomBuildHook(BuildHookInterface):
         ts = datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
         content = (
+            "# This Source Code Form is subject to the terms of the Mozilla Public\n"
+            "# License, v. 2.0. If a copy of the MPL was not distributed with this\n"
+            "# file, You can obtain one at https://mozilla.org/MPL/2.0/.\n"
             "# auto-generated at build time — do not edit\n"
             f'BUILD_COMMIT = "{commit_short}"\n'
             f'BUILD_COMMIT_FULL = "{commit_full}"\n'

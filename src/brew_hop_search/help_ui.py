@@ -1,3 +1,6 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """Help UI: terse -h, full --help, --man, and -h/--help=MODE scoped help.
 
 See `docs/specs/drafts/help-modes.md` for the surface + `claude-collab/help-ux.md`

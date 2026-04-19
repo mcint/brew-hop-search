@@ -1,3 +1,6 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """Expect-style snapshot tests for all output modes.
 
 ppx_expect / cram style: expected output lives in tests/snapshots/*.txt.

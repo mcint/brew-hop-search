@@ -210,4 +210,7 @@ brew-hop-search 0.3.0+0648dff
 
 ## License
 
-MIT
+[MPL-2.0](LICENSE) — file-level copyleft. Fixes to covered files come
+back as MPL; new files and downstream projects can pick their own
+license. See [claude-collab/licenses.md](../claude-collab/licenses.md)
+for the rationale.
