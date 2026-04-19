@@ -5,3 +5,4 @@ dist/
 *.egg-info/
 sessions/
 .DS_Store
+src/brew_hop_search/_build_info.py
