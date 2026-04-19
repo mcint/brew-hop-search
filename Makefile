@@ -29,8 +29,8 @@ release: ## Interactive release (test → build → tag → ff main)
 release-rc: ## Unattended rc release
 	./scripts/release.sh --yes --rc
 
-release-test: ## Full release flow → TestPyPI (no main ff, no post-bump)
-	./scripts/release.sh --testpypi --release
+release-test: ## Release flow → TestPyPI; expects HEAD already tagged
+	./scripts/release.sh --testpypi --skip-tag --yes
 
 release-yes: ## Unattended PyPI release (prompts pre-answered)
 	./scripts/release.sh --yes --release
