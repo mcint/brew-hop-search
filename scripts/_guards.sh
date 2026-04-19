@@ -108,6 +108,7 @@ guard_wheel_at_tag() {
         local diffs=""
         while IFS= read -r rel; do
             [[ "$rel" == *"_build_info.py" ]] && continue
+            [[ "$rel" == *"/data/"* ]] && continue
             local wheel_file="$tmp/$rel"
             local tree_file="src/$rel"
             if [ ! -f "$tree_file" ]; then

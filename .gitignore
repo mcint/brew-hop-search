@@ -6,3 +6,4 @@ dist/
 sessions/
 .DS_Store
 src/brew_hop_search/_build_info.py
+src/brew_hop_search/data/

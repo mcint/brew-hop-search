@@ -1,13 +1,16 @@
-"""Hatch build hook: write _build_info.py into the package at build time.
+"""Hatch build hook: write _build_info.py + package the man-page markdown.
 
 Bakes git metadata (commit, branch, tag, dirty flag, timestamp) into the
 wheel so `brew-hop-search -V` can report the exact commit of any install,
-not just dev-tree ones.
+not just dev-tree ones. Also copies docs/brew-hop-search.1.md into
+src/brew_hop_search/data/ so `brew-hop-search --man` works post-install.
 """
 from __future__ import annotations
 
 import datetime
+import shutil
 import subprocess
+from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -57,3 +60,11 @@ class CustomBuildHook(BuildHookInterface):
         )
         with open(out, "w") as f:
             f.write(content)
+
+        # Stage the man-page markdown as package data so --man works
+        # from installed wheels (no MANPATH required).
+        man_src = Path("docs/brew-hop-search.1.md")
+        man_dst = Path("src/brew_hop_search/data/brew-hop-search.1.md")
+        if man_src.is_file():
+            man_dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(man_src, man_dst)

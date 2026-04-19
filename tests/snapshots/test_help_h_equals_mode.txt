@@ -1,0 +1,5 @@
+# brew-hop-search(1) -- fast offline-first Homebrew search
+
+## SYNOPSIS
+
+`brew-hop-search` [`-fcitL`] [`-gq`|`--json`] [`-n` *N*[`+`*OFF*]] [`--refresh`[`=`*DUR*]] [`-VCOH`] [*query* ...]

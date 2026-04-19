@@ -252,8 +252,14 @@ def main(argv=None):
 
     # ── info ──
     info = ap.add_argument_group("info")
-    info.add_argument("-h", "--help", action="help",
-                      help="show this help message and exit")
+    info.add_argument("-h", dest="help_short", nargs="?", const="",
+                      default=None, metavar="MODE",
+                      help="terse help (or MODE: man, <section>, <flag>)")
+    info.add_argument("--help", dest="help_full", nargs="?", const="",
+                      default=None, metavar="MODE",
+                      help="full help (or MODE: man, <section>, <flag>)")
+    info.add_argument("--man", action="store_true",
+                      help="offline man page (same as --help=man)")
     info.add_argument("-V", "--version", action="count", default=0,
                       help="version (-VV: commits + PyPI)")
     info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
@@ -301,10 +307,39 @@ def main(argv=None):
 
     # Normalize bare '--json' → '--json=full' so it doesn't swallow the
     # following positional as its value. '--json=short' / '--json=full' pass
-    # through untouched.
+    # through untouched. Also rewrite '-h=MODE' → '-h MODE'.
+    from brew_hop_search.help_ui import normalize_argv
     raw = list(sys.argv[1:] if argv is None else argv)
-    normalized = ["--json=full" if a == "--json" else a for a in raw]
+    normalized = normalize_argv(
+        ["--json=full" if a == "--json" else a for a in raw]
+    )
     args = ap.parse_args(normalized)
+
+    # ── help modes ──
+    # -h / --help / -h=MODE / --help=MODE / --man all land here before
+    # any other mode (no DB access, no network).
+    help_mode = None
+    help_form = None  # "terse" | "full"
+    if args.help_full is not None:
+        help_mode = args.help_full
+        help_form = "full"
+    elif args.help_short is not None:
+        help_mode = args.help_short
+        help_form = "terse"
+
+    if args.man or help_mode == "man":
+        from brew_hop_search.help_ui import show_man
+        sys.exit(show_man())
+
+    if help_mode is not None:
+        from brew_hop_search.help_ui import show_terse, show_scoped
+        if help_mode == "":
+            if help_form == "terse":
+                show_terse(ap)
+            else:
+                ap.print_help()
+            return
+        sys.exit(show_scoped(ap, help_mode))
 
     # ── background refresh mode ──
     if getattr(args, "_bg_refresh", None):

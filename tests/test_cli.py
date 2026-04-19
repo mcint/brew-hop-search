@@ -25,6 +25,38 @@ def test_help(snap):
     snap.assert_match(run("--help"))
 
 
+def test_help_terse(snap):
+    snap.assert_match(run("-h"))
+
+
+def test_help_scoped_section(snap):
+    snap.assert_match(run("--help=sources"))
+
+
+def test_help_scoped_flag(snap):
+    snap.assert_match(run("--help=outdated"))
+
+
+def test_help_scoped_unknown():
+    out = run("--help=frobnicate")
+    assert "unknown help mode" in out
+    assert "frobnicate" in out
+
+
+def test_help_h_equals_mode(snap):
+    """`-h=man` should normalize to `-h man` (first 5 lines of man page)."""
+    out = run("-h=man")
+    lines = out.splitlines()[:5]
+    snap.assert_match("\n".join(lines))
+
+
+def test_man_flag(snap):
+    """--man output starts with the man-page header."""
+    out = run("--man")
+    lines = out.splitlines()[:5]
+    snap.assert_match("\n".join(lines))
+
+
 def test_version_importable():
     from brew_hop_search import __version__
     assert re.match(r"\d+\.\d+\.\d+", __version__)

@@ -39,6 +39,9 @@ publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
 [tool.hatch.build]
-artifacts = ["src/brew_hop_search/_build_info.py"]
+artifacts = [
+    "src/brew_hop_search/_build_info.py",
+    "src/brew_hop_search/data/",
+]
 
 [tool.hatch.build.hooks.custom]

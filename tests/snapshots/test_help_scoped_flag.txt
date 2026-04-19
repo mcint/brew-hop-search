@@ -1,0 +1,3 @@
+  -O, --outdated
+    outdated packages
+    (in section: info)

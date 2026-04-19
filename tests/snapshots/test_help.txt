@@ -14,7 +14,9 @@ sources (composable, default: remote API):
   -L, --local           local API cache (offline)
 
 info:
-  -h, --help            show this help message and exit
+  -h [MODE]             terse help (or MODE: man, <section>, <flag>)
+  --help [MODE]         full help (or MODE: man, <section>, <flag>)
+  --man                 offline man page (same as --help=man)
   -V, --version         version (-VV: commits + PyPI)
   -C, --cache-status    cache status
   -O, --outdated        outdated packages

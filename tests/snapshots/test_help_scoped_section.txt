@@ -1,0 +1,12 @@
+  sources (composable, default: remote API)
+
+    -f, --formulae, --formula
+      formulae only
+    -c, --casks, --cask
+      casks only
+    -i, --installed
+      installed packages
+    -t, --taps
+      tapped repos
+    -L, --local
+      local API cache (offline)
