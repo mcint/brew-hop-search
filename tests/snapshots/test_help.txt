@@ -1,12 +1,9 @@
-usage: brew-hop-search [-fcitL] [-gq|--json[=MODE]|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
 positional arguments:
   query                 search terms (AND-matched)
-
-options:
-  -h, --help            show this help message and exit
 
 sources (composable, default: remote API):
   -f, --formulae, --formula
@@ -16,6 +13,18 @@ sources (composable, default: remote API):
   -t, --taps            tapped repos
   -L, --local           local API cache (offline)
 
+info:
+  -h, --help            show this help message and exit
+  -V, --version         version (-VV: commits + PyPI)
+  -C, --cache-status    cache status
+  -O, --outdated        outdated packages
+  --brew-verify         use brew for -O (slower, authoritative)
+  -H, --history         version history for rollback
+
+cache:
+  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
+  --stale [DUR]         background refresh threshold (default: 6h)
+
 output:
   -g, --grep            tab-separated for piping
   -q, --quiet           results only (for grep/fzf)
@@ -23,19 +32,8 @@ output:
                         fields)
   --csv                 CSV output
   --tsv                 tab-separated with header
-  --table               aligned columns (like sqlite3 -column)
+  -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
   -n N[+OFF], --limit N[+OFF]
                         max results [+offset], 0=all (default: 20)
   -v, --verbose         source tags, cache info (-vv per-source detail)
-
-cache:
-  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
-  --stale [DUR]         background refresh threshold (default: 6h)
-
-info:
-  -V, --version         version (-VV: commits + PyPI)
-  -C, --cache-status    cache status
-  -O, --outdated        outdated packages
-  --brew-verify         use brew for -O (slower, authoritative)
-  -H, --history         version history for rollback

@@ -230,9 +230,10 @@ def _show_version(level: int) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
-        usage="%(prog)s [-fcitL] [-gq|--json[=MODE]|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]",
+        usage="%(prog)s [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
     ap.add_argument("query", nargs="*", help="search terms (AND-matched)")
 
@@ -249,6 +250,30 @@ def main(argv=None):
     src.add_argument("-L", "--local", action="store_true",
                      help="local API cache (offline)")
 
+    # ── info ──
+    info = ap.add_argument_group("info")
+    info.add_argument("-h", "--help", action="help",
+                      help="show this help message and exit")
+    info.add_argument("-V", "--version", action="count", default=0,
+                      help="version (-VV: commits + PyPI)")
+    info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
+                      help="cache status")
+    info.add_argument("-O", "--outdated", action="store_true",
+                      help="outdated packages")
+    info.add_argument("--brew-verify", action="store_true",
+                      help="use brew for -O (slower, authoritative)")
+    info.add_argument("-H", "--history", action="store_true",
+                      help="version history for rollback")
+
+    # ── cache ──
+    cache = ap.add_argument_group("cache")
+    cache.add_argument("--refresh", nargs="?", type=parse_duration, const=0,
+                       default=None, metavar="DUR",
+                       help="sync refresh (bare: force, =DUR: if older)")
+    cache.add_argument("--stale", nargs="?", type=parse_duration,
+                       const=DEFAULT_STALE, default=None, metavar="DUR",
+                       help="background refresh threshold (default: 6h)")
+
     # ── output ──
     fmt = ap.add_argument_group("output")
     fmt.add_argument("-g", "--grep", action="store_true",
@@ -262,7 +287,7 @@ def main(argv=None):
                      help="CSV output")
     fmt.add_argument("--tsv", action="store_true",
                      help="tab-separated with header")
-    fmt.add_argument("--table", action="store_true",
+    fmt.add_argument("-T", "--table", action="store_true",
                      help="aligned columns (like sqlite3 -column)")
     fmt.add_argument("--sql", action="store_true",
                      help="SQLite INSERT statements")
@@ -271,27 +296,6 @@ def main(argv=None):
     fmt.add_argument("-v", "--verbose", action="count", default=0,
                      help="source tags, cache info (-vv per-source detail)")
 
-    # ── cache ──
-    cache = ap.add_argument_group("cache")
-    cache.add_argument("--refresh", nargs="?", type=parse_duration, const=0,
-                       default=None, metavar="DUR",
-                       help="sync refresh (bare: force, =DUR: if older)")
-    cache.add_argument("--stale", nargs="?", type=parse_duration,
-                       const=DEFAULT_STALE, default=None, metavar="DUR",
-                       help="background refresh threshold (default: 6h)")
-
-    # ── info ──
-    info = ap.add_argument_group("info")
-    info.add_argument("-V", "--version", action="count", default=0,
-                      help="version (-VV: commits + PyPI)")
-    info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
-                      help="cache status")
-    info.add_argument("-O", "--outdated", action="store_true",
-                      help="outdated packages")
-    info.add_argument("--brew-verify", action="store_true",
-                      help="use brew for -O (slower, authoritative)")
-    info.add_argument("-H", "--history", action="store_true",
-                      help="version history for rollback")
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
                     help=argparse.SUPPRESS)
 
