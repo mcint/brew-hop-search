@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brew-hop-search"
-version = "0.3.2"
+version = "0.3.3"
 description = "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages"
 readme = "README.md"
 license = "MPL-2.0"

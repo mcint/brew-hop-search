@@ -4,7 +4,7 @@
 """brew-hop-search: fast offline-first Homebrew search."""
 import os
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
