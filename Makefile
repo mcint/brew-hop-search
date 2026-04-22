@@ -61,8 +61,8 @@ versions: ## List versions published on PyPI + TestPyPI
 	 echo "# pypi"; pypi_versions pypi; \
 	 echo "# testpypi"; pypi_versions testpypi
 
-publish-test: ## Build + publish current version to TestPyPI (with guards)
-	./scripts/publish.sh
+publish-test: ## Publish current dist to TestPyPI (assumes built; run `make build` first)
+	./scripts/publish.sh --skip-build
 
-publish: ## Build + publish current version to PyPI (with guards)
-	./scripts/publish.sh --release
+publish: ## Publish current dist to PyPI (assumes built; run `make build` first)
+	./scripts/publish.sh --skip-build --release

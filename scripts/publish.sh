@@ -36,10 +36,8 @@ while [ $# -gt 0 ]; do
 done
 
 INDEX="testpypi"
-PUBLISH_FLAGS=(--index testpypi)
 if $RELEASE; then
     INDEX="pypi"
-    PUBLISH_FLAGS=()
 fi
 
 echo "Version: $version  → $INDEX"
@@ -87,8 +85,13 @@ guard_dist_exists "$version"
 guard_wheel_at_tag "$version"
 
 # ── Publish ──────────────────────────────────────────────────
+# Branch at the call site: bash 3.2 (macOS default) errors on empty-array
+# expansion with `set -u`, so we avoid building a PUBLISH_FLAGS array.
 echo "Publishing to $INDEX..."
-# shellcheck disable=SC2086
-uv publish "${PUBLISH_FLAGS[@]}" dist/*"${version}"*
+if $RELEASE; then
+    uv publish dist/*"${version}"*
+else
+    uv publish --index testpypi dist/*"${version}"*
+fi
 
 echo "Done."
