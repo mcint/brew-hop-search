@@ -9,10 +9,12 @@ the wrong thing.
 **HEAD of `dev` must never share its version with a published release.** The
 release flow maintains this mechanically, two ways:
 
-- **After publish**, `publish.sh` runs `bump-version.sh --dev`, setting
-  `__version__` to the next `.dev0` form (e.g. `0.3.1` → `0.3.2.dev0`). Files
-  are left **uncommitted** — the dirty working tree is the "release done"
-  marker, swept by your next real commit.
+- **After publish**, `publish.sh` runs `bump-version.sh --dev`, setting the
+  version to the next `.dev0` form (e.g. `0.3.1` → `0.3.2.dev0`) in
+  `src/brew_hop_search/VERSION` — the single source read by hatch (dynamic
+  `[project.version]`) and by `__init__.py` at import time. Files are left
+  **uncommitted** — the dirty working tree is the "release done" marker,
+  swept by your next real commit.
 - **Before tagging**, `release.sh` runs `bump-version.sh --release`, which
   strips `.devN` (e.g. `0.3.2.dev0` → `0.3.2`) and commits the promotion.
   So tags always land on release-form versions, never `.dev0`.
@@ -43,7 +45,7 @@ make readme
 # 4. Commit the changes.
 git commit -am "…"
 
-# 5. Bump the version. This edits __init__.py + pyproject.toml. Commit it.
+# 5. Bump the version. Edits src/brew_hop_search/VERSION. Commit it.
 #    (If HEAD is already $X.Y.Z.dev0 from last release, skip this — the
 #    release flow will auto-promote .dev0 → release at Step 0.)
 make bump
@@ -73,7 +75,7 @@ make publish          # to PyPI
 ## Inspecting state
 
 ```sh
-make version      # current __version__
+make version      # current version (from src/brew_hop_search/VERSION)
 make versions     # pypi + testpypi published versions
 make tag-list     # git tags matching current version
 git tag -l        # all tags
@@ -97,7 +99,7 @@ All scripts live in `scripts/`. Most users only need `make` targets.
 | Script | Invoked by | Purpose |
 |--------|------------|---------|
 | `_guards.sh` | sourced | Shared preflight functions |
-| `bump-version.sh` | `make bump` | Patch-bump `__init__.py` + `pyproject.toml` |
+| `bump-version.sh` | `make bump` | Patch-bump `src/brew_hop_search/VERSION` |
 | `build-tag.sh` | `make tag` / `release.sh` | Create rc or release git tag |
 | `build-readme.sh` | `make readme` | Regenerate `README.md` from template + live output |
 | `release.sh` | `make release` | Interactive checkpointed release |

@@ -21,8 +21,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=_guards.sh
 . "$here/_guards.sh"
 
-INIT_FILE="src/brew_hop_search/__init__.py"
-version=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
+VERSION_FILE="src/brew_hop_search/VERSION"
+version=$(tr -d '[:space:]' < "$VERSION_FILE")
 
 RELEASE=false
 SKIP_BUILD=false

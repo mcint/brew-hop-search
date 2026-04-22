@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brew-hop-search"
-version = "0.3.5"
+dynamic = ["version"]
 description = "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages"
 readme = "README.md"
 license = "MPL-2.0"
@@ -41,6 +41,11 @@ name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+[tool.hatch.version]
+source = "regex"
+path = "src/brew_hop_search/VERSION"
+pattern = "^(?P<version>.+)$"
 
 [tool.hatch.build]
 artifacts = [

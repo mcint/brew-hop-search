@@ -11,12 +11,11 @@
 #   ./scripts/build-tag.sh --latest  # show latest tag
 set -euo pipefail
 
-INIT_FILE="src/brew_hop_search/__init__.py"
+VERSION_FILE="src/brew_hop_search/VERSION"
 
-# Extract current version
-version=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
+version=$(tr -d '[:space:]' < "$VERSION_FILE" 2>/dev/null || true)
 if [ -z "$version" ]; then
-    echo "Could not find __version__ in $INIT_FILE" >&2
+    echo "Could not read version from $VERSION_FILE" >&2
     exit 1
 fi
 

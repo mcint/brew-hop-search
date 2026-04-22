@@ -67,8 +67,8 @@ confirm() {
     [ "$ans" = "y" ]
 }
 
-INIT_FILE="src/brew_hop_search/__init__.py"
-VERSION=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
+VERSION_FILE="src/brew_hop_search/VERSION"
+VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TAG=""
 
@@ -80,8 +80,8 @@ if [[ "$VERSION" == *.dev* ]]; then
         VERSION="$promoted"
     else
         ./scripts/bump-version.sh --release
-        VERSION=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
-        git add "$INIT_FILE" pyproject.toml
+        VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
+        git add "$VERSION_FILE"
         git commit -m "Promote to release v${VERSION}" -q
         echo "✓ promoted to release v${VERSION}"
     fi

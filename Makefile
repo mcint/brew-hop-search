@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 .PHONY: test build readme tag release release-rc release-test release-yes clean help versions publish publish-test bump bump-dev bump-release
 
-VERSION := $(shell sed -n 's/^__version__ = "\([^"]*\)"/\1/p' src/brew_hop_search/__init__.py)
+VERSION := $(shell tr -d '[:space:]' < src/brew_hop_search/VERSION)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'

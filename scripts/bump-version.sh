@@ -12,8 +12,7 @@
 # Exits 0 in both cases so callers can run it idempotently.
 set -euo pipefail
 
-INIT_FILE="src/brew_hop_search/__init__.py"
-PYPROJECT="pyproject.toml"
+VERSION_FILE="src/brew_hop_search/VERSION"
 
 MODE="patch"
 case "${1:-}" in
@@ -23,9 +22,13 @@ case "${1:-}" in
     *) echo "Usage: $0 [--dev|--release]" >&2; exit 2 ;;
 esac
 
-current=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "Version file not found: $VERSION_FILE" >&2
+    exit 1
+fi
+current=$(tr -d '[:space:]' < "$VERSION_FILE")
 if [ -z "$current" ]; then
-    echo "Could not find __version__ in $INIT_FILE" >&2
+    echo "Empty version file: $VERSION_FILE" >&2
     exit 1
 fi
 
@@ -66,20 +69,6 @@ if [ "$new_version" = "$current" ]; then
     exit 0
 fi
 
-# sed on macOS needs '' after -i; use a tmp file for portability-free syntax.
-python3 - "$INIT_FILE" "$PYPROJECT" "$current" "$new_version" <<'PY'
-import sys, pathlib, re
-init_file, pyproject, old, new = sys.argv[1:]
-for path, pat, tmpl in [
-    (init_file, r'^__version__ = "' + re.escape(old) + r'"', f'__version__ = "{new}"'),
-    (pyproject, r'^version = "' + re.escape(old) + r'"',     f'version = "{new}"'),
-]:
-    p = pathlib.Path(path)
-    txt = p.read_text()
-    new_txt = re.sub(pat, tmpl, txt, count=1, flags=re.MULTILINE)
-    if new_txt == txt:
-        sys.stderr.write(f"warning: no match for {old} in {path}\n")
-    p.write_text(new_txt)
-PY
+printf '%s\n' "$new_version" > "$VERSION_FILE"
 
 echo "$current → $new_version"

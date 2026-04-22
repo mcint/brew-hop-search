@@ -3,8 +3,9 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
 import os
+from pathlib import Path
 
-__version__ = "0.3.5"
+__version__ = (Path(__file__).parent / "VERSION").read_text().strip()
 
 PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
