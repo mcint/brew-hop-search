@@ -1,3 +1,4 @@
+<!-- from README.md.template, built with `make readme` -->
 # brew-hop-search
 
 Fast offline-first search of Homebrew formulae, casks, taps, and installed packages.
@@ -20,6 +21,35 @@ brew tap mcint/brew-hop-search
 brew install brew-hop-search
 ```
 
+## Examples
+
+```sh
+brew-hop-search python                 # search formulae + casks
+brew-hop-search -f python build        # multi-word, formulae only
+brew-hop-search -i                     # list all installed
+brew-hop-search -i -c                  # installed casks only
+brew-hop-search -q python | fzf        # pipe to fzf
+brew-hop-search --csv python | qsv sort -s name  # sort CSV
+brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
+brew-hop-search -O                     # show outdated (local)
+brew-hop-search -O --brew-verify       # diff: bhs vs brew
+brew-hop-search -H python@3.13         # version history for rollback
+brew-hop-search --refresh python       # force re-fetch
+```
+
+## How it works
+
+On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
+
+| Source | Flag | Data | Calls brew? |
+|--------|------|------|-------------|
+| Remote API | *(default)* | `formulae.brew.sh` | No |
+| Installed | `-i` | `brew info --json=v2 --installed` | Yes |
+| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
+| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
+| Outdated | `-O` | Compares installed vs API index | No |
+| Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
+
 ## Example output
 
 Default search — clean, human-optimal:
@@ -30,7 +60,7 @@ Default search — clean, human-optimal:
     python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
     python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
     python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
-  # casks (5/7625)  • brew install --cask anaconda
+  # casks (5/7627)  • brew install --cask anaconda
     anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
     armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
     chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
@@ -40,14 +70,14 @@ Default search — clean, human-optimal:
 
 With `-v` — source tags and cache info:
 ```
-  -- cache: just fetched   searching formula + cask
+  -- cache: 2d23h old   searching formula + cask
   # formulae (5/8314)  • brew install python-argcomplete
   f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
   f python-build  1.4.3  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
   f python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
   f python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
   f python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
-  # casks (5/7625)  • brew install --cask anaconda
+  # casks (5/7627)  • brew install --cask anaconda
   c anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
   c armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
   c chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
@@ -101,27 +131,24 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.6 MB
-  formula    8314  <1m ago  fts  30MB json
-  cask    7625  <1m ago  fts  14MB json
-  installed:f     460  1d19h ago
-  installed:c      85  1d19h ago
-  taps      49  8d18h ago
-  local:f     160  10d17h ago
-  local:c      59  10d17h ago
+  formula    8314  2d23h ago  fts  30MB json
+  cask    7627  2d23h ago  fts  14MB json
+  installed:f     460  2d17h ago
+  installed:c      86  2d17h ago
+  taps      50  3d9h ago
+  local:f     161  3d9h ago
+  local:c      59  3d9h ago
 ```
 
 ## Usage
 
 ```
-usage: brew-hop-search [-fcitL] [-gq|--json[=MODE]|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
 positional arguments:
   query                 search terms (AND-matched)
-
-options:
-  -h, --help            show this help message and exit
 
 sources (composable, default: remote API):
   -f, --formulae, --formula
@@ -131,6 +158,20 @@ sources (composable, default: remote API):
   -t, --taps            tapped repos
   -L, --local           local API cache (offline)
 
+info:
+  -h [MODE]             terse help (or MODE: man, <section>, <flag>)
+  --help [MODE]         full help (or MODE: man, <section>, <flag>)
+  --man                 offline man page (same as --help=man)
+  -V, --version         version (-VV: commits + PyPI)
+  -C, --cache-status    cache status
+  -O, --outdated        outdated packages
+  --brew-verify         use brew for -O (slower, authoritative)
+  -H, --history         version history for rollback
+
+cache:
+  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
+  --stale [DUR]         background refresh threshold (default: 6h)
+
 output:
   -g, --grep            tab-separated for piping
   -q, --quiet           results only (for grep/fzf)
@@ -138,38 +179,11 @@ output:
                         fields)
   --csv                 CSV output
   --tsv                 tab-separated with header
-  --table               aligned columns (like sqlite3 -column)
+  -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
   -n N[+OFF], --limit N[+OFF]
                         max results [+offset], 0=all (default: 20)
   -v, --verbose         source tags, cache info (-vv per-source detail)
-
-cache:
-  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
-  --stale [DUR]         background refresh threshold (default: 6h)
-
-info:
-  -V, --version         version (-VV: commits + PyPI)
-  -C, --cache-status    cache status
-  -O, --outdated        outdated packages
-  --brew-verify         use brew for -O (slower, authoritative)
-  -H, --history         version history for rollback
-```
-
-### Examples
-
-```sh
-brew-hop-search python                 # search formulae + casks
-brew-hop-search -f python build        # multi-word, formulae only
-brew-hop-search -i                     # list all installed
-brew-hop-search -i -c                  # installed casks only
-brew-hop-search -q python | fzf        # pipe to fzf
-brew-hop-search --csv python | qsv sort -s name  # sort CSV
-brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
-brew-hop-search -O                     # show outdated (local)
-brew-hop-search -O --brew-verify       # diff: bhs vs brew
-brew-hop-search -H python@3.13         # version history for rollback
-brew-hop-search --refresh python       # force re-fetch
 ```
 
 ### Direct DB access
@@ -180,19 +194,6 @@ The SQLite database is at `~/.cache/brew-hop-search/brew-hop-search.db`:
 sqlite-utils tables ~/.cache/brew-hop-search/brew-hop-search.db
 sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 ```
-
-## How it works
-
-On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
-
-| Source | Flag | Data | Calls brew? |
-|--------|------|------|-------------|
-| Remote API | *(default)* | `formulae.brew.sh` | No |
-| Installed | `-i` | `brew info --json=v2 --installed` | Yes |
-| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
-| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
-| Outdated | `-O` | Compares installed vs API index | No |
-| Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 
 ## Docs
 
@@ -205,7 +206,7 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 ## Version
 
 ```
-brew-hop-search 0.3.0+0648dff
+brew-hop-search 0.3.5+639ba7e
 ```
 
 ## License

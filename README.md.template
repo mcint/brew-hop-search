@@ -1,3 +1,4 @@
+<!-- from README.md.template, built with `make readme` -->
 # brew-hop-search
 
 Fast offline-first search of Homebrew formulae, casks, taps, and installed packages.
@@ -19,6 +20,35 @@ uvx brew-hop-search python          # one-shot without install
 brew tap mcint/brew-hop-search
 brew install brew-hop-search
 ```
+
+## Examples
+
+```sh
+brew-hop-search python                 # search formulae + casks
+brew-hop-search -f python build        # multi-word, formulae only
+brew-hop-search -i                     # list all installed
+brew-hop-search -i -c                  # installed casks only
+brew-hop-search -q python | fzf        # pipe to fzf
+brew-hop-search --csv python | qsv sort -s name  # sort CSV
+brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
+brew-hop-search -O                     # show outdated (local)
+brew-hop-search -O --brew-verify       # diff: bhs vs brew
+brew-hop-search -H python@3.13         # version history for rollback
+brew-hop-search --refresh python       # force re-fetch
+```
+
+## How it works
+
+On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
+
+| Source | Flag | Data | Calls brew? |
+|--------|------|------|-------------|
+| Remote API | *(default)* | `formulae.brew.sh` | No |
+| Installed | `-i` | `brew info --json=v2 --installed` | Yes |
+| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
+| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
+| Outdated | `-O` | Compares installed vs API index | No |
+| Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 
 ## Example output
 
@@ -64,22 +94,6 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 {{HELP_OUTPUT}}
 ```
 
-### Examples
-
-```sh
-brew-hop-search python                 # search formulae + casks
-brew-hop-search -f python build        # multi-word, formulae only
-brew-hop-search -i                     # list all installed
-brew-hop-search -i -c                  # installed casks only
-brew-hop-search -q python | fzf        # pipe to fzf
-brew-hop-search --csv python | qsv sort -s name  # sort CSV
-brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
-brew-hop-search -O                     # show outdated (local)
-brew-hop-search -O --brew-verify       # diff: bhs vs brew
-brew-hop-search -H python@3.13         # version history for rollback
-brew-hop-search --refresh python       # force re-fetch
-```
-
 ### Direct DB access
 
 The SQLite database is at `~/.cache/brew-hop-search/brew-hop-search.db`:
@@ -88,19 +102,6 @@ The SQLite database is at `~/.cache/brew-hop-search/brew-hop-search.db`:
 sqlite-utils tables ~/.cache/brew-hop-search/brew-hop-search.db
 sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 ```
-
-## How it works
-
-On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
-
-| Source | Flag | Data | Calls brew? |
-|--------|------|------|-------------|
-| Remote API | *(default)* | `formulae.brew.sh` | No |
-| Installed | `-i` | `brew info --json=v2 --installed` | Yes |
-| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
-| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
-| Outdated | `-O` | Compares installed vs API index | No |
-| Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 
 ## Docs
 
