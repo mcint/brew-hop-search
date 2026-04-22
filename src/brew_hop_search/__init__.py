@@ -69,13 +69,56 @@ def build_info() -> dict:
         return {}
 
 
+def _live_dirty() -> bool:
+    """Live `git status --porcelain` check (for dev-tree installs)."""
+    try:
+        import subprocess
+        from pathlib import Path
+        pkg_dir = Path(__file__).resolve().parent
+        result = subprocess.run(
+            ["git", "-C", str(pkg_dir), "status", "--porcelain", "-uno"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return result.returncode == 0 and bool(result.stdout.strip())
+    except Exception:
+        return False
+
+
 def version_info() -> str:
     """Version string with git commit hash; marks dirty builds."""
     h = commit_hash()
     if not h:
         return __version__
     bi = build_info()
+    dirty = bi.get("dirty") if bi else _live_dirty()
     suffix = f"+{h}"
-    if bi.get("dirty"):
+    if dirty:
         suffix += ".dirty"
     return f"{__version__}{suffix}"
+
+
+def install_source() -> str:
+    """Where the running package came from: 'local', 'brew', 'pypi', 'unknown'.
+
+    Local = a git work tree at the package location (uv run / editable install).
+    Brew / pypi inferred from the package path.
+    """
+    try:
+        import subprocess
+        from pathlib import Path
+        pkg_dir = Path(__file__).resolve().parent
+        result = subprocess.run(
+            ["git", "-C", str(pkg_dir), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip() == "true":
+            return "local"
+    except Exception:
+        pass
+    from pathlib import Path
+    path = str(Path(__file__).resolve().parent)
+    if "/Cellar/" in path or "/linuxbrew/" in path:
+        return "brew"
+    if "site-packages" in path:
+        return "pypi"
+    return "unknown"
