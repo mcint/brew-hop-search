@@ -39,6 +39,26 @@ def test_help_terse(snap):
     snap.assert_match(run("-h"))
 
 
+def test_help_contextual_single(snap):
+    """`-h <flag>` echoes the flag and explains it."""
+    snap.assert_match(run("-h", "-O"))
+
+
+def test_help_contextual_multi(snap):
+    """`-h <flag> <flag>` explains each in order typed."""
+    snap.assert_match(run("-h", "-c", "-i"))
+
+
+def test_help_contextual_value_attached(snap):
+    """`-h -n0` matches -n's action despite the attached value."""
+    snap.assert_match(run("-h", "-n0"))
+
+
+def test_help_contextual_flag_after_others(snap):
+    """`<flag> -h` (flag before -h) still routes to contextual help."""
+    snap.assert_match(run("-O", "-h"))
+
+
 def test_help_scoped_section(snap):
     snap.assert_match(run("--help=sources"))
 

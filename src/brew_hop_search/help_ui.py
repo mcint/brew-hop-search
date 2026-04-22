@@ -63,13 +63,19 @@ def show_man() -> int:
 
 # ── terse help ──────────────────────────────────────────────────────────────
 
+def _usage_header(parser: argparse.ArgumentParser) -> None:
+    """Shared top block: usage, --help pointer (aligned), description."""
+    usage = parser.format_usage().strip().replace("usage: ", "")
+    # Align the --help hint's command under the command in the usage line.
+    indent = " " * len("  usage: ")
+    print(f"  usage: {usage}")
+    print(f"{indent}brew-hop-search --help      {dim('(for full help)')}")
+    print(f"  {dim(parser.description or '')}")
+
+
 def show_terse(parser: argparse.ArgumentParser) -> None:
     """Compact synopsis + top examples + pointers to richer help."""
-    from brew_hop_search import version_info
-    print(f"  {bold('brew-hop-search')} {dim(version_info())}")
-    print(f"  {dim('fast offline-first Homebrew formula/cask search')}")
-    print()
-    print(f"  usage: {parser.format_usage().strip().replace('usage: ', '')}")
+    _usage_header(parser)
     print()
     print(f"  {bold('quick examples:')}")
     print(f"    brew-hop-search python               {dim('# formulae + casks (top 20)')}")
@@ -81,10 +87,42 @@ def show_terse(parser: argparse.ArgumentParser) -> None:
     print(f"  {bold('info:')}    -C {dim('cache status')}  ·  -V {dim('version')}  ·  -VV {dim('verbose & latest')}")
     print()
     print(f"  {bold('more help:')}")
-    print(f"    --help                 full options")
     print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=output")
     print(f"    --help={dim('<flag>')}          e.g. --help=-c, --help=outdated")
     print(f"    --man                  offline man page")
+
+
+def show_contextual(parser: argparse.ArgumentParser, flag_tokens: list[str]) -> int:
+    """Echo the flags in use and explain each one.
+
+    Triggered by `brew-hop-search -h <flag> [<flag>...]`. Reuses the terse
+    header; replaces quick examples with line-per-flag explanations.
+    """
+    _usage_header(parser)
+    print(f"  {bold('parsed:')} {' '.join(flag_tokens)}")
+    print()
+
+    # Resolve each token to an action, in the order the user typed them.
+    # Accepts `-n0`, `--limit=50`, and `-VV` by stripping the value/repeat
+    # suffix and matching the flag stem.
+    rows: list[tuple[str, str]] = []
+    for tok in flag_tokens:
+        match = _find_flag_action(parser, tok)
+        if match is None:
+            rows.append((tok, dim("(unknown flag)")))
+        else:
+            opts = ", ".join(match.option_strings) or match.dest
+            rows.append((opts, match.help or ""))
+
+    width = max((len(opts) for opts, _ in rows), default=0)
+    for opts, desc in rows:
+        print(f"    {bold(opts.ljust(width))}  {desc}")
+
+    print()
+    print(f"  {bold('more help:')}")
+    print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=output")
+    print(f"    --man                  offline man page")
+    return 0
 
 
 # ── scoped help: sections + individual flags ────────────────────────────────
@@ -96,6 +134,34 @@ def _group_by_title(parser: argparse.ArgumentParser, title: str):
         gt = (g.title or "").lower()
         if gt.startswith(want) or want in gt:
             return g
+    return None
+
+
+def _find_flag_action(parser: argparse.ArgumentParser, tok: str):
+    """Resolve an argv flag token to its argparse Action.
+
+    Handles `--long=value`, `-xVALUE` (e.g. `-n0`), and repeated short flags
+    (e.g. `-VV` matches `-V`). Returns None if no action matches.
+    """
+    def _visible_actions():
+        return [a for a in parser._actions if a.help != argparse.SUPPRESS]
+
+    # Exact match
+    for a in _visible_actions():
+        if tok in a.option_strings:
+            return a
+    # --long=value → --long
+    if "=" in tok:
+        head = tok.split("=", 1)[0]
+        for a in _visible_actions():
+            if head in a.option_strings:
+                return a
+    # -xVALUE or -xx… → -x (short flag with appended value or repetition)
+    if len(tok) > 2 and tok.startswith("-") and not tok.startswith("--"):
+        short = tok[:2]
+        for a in _visible_actions():
+            if short in a.option_strings:
+                return a
     return None
 
 

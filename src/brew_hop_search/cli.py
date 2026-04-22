@@ -316,6 +316,17 @@ def main(argv=None):
     # through untouched. Also rewrite '-h=MODE' → '-h MODE'.
     from brew_hop_search.help_ui import normalize_argv
     raw = list(sys.argv[1:] if argv is None else argv)
+
+    # Contextual -h: if -h is present alongside any flag-like token, route
+    # to a renderer that echoes what was passed and explains each flag. This
+    # pre-empts argparse, which otherwise consumes the next token as -h's MODE.
+    if "-h" in raw:
+        others = [a for a in raw if a != "-h"]
+        flag_others = [a for a in others if a.startswith("-")]
+        if flag_others:
+            from brew_hop_search.help_ui import show_contextual
+            sys.exit(show_contextual(ap, flag_others))
+
     normalized = normalize_argv(
         ["--json=full" if a == "--json" else a for a in raw]
     )

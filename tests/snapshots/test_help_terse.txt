@@ -1,7 +1,6 @@
-  brew-hop-search X.Y.Z
-  fast offline-first Homebrew formula/cask search
-
   usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+         brew-hop-search --help      (for full help)
+  Fast offline-first Homebrew formula/cask search.
 
   quick examples:
     brew-hop-search python               # formulae + casks (top 20)
@@ -13,7 +12,6 @@
   info:    -C cache status  ·  -V version  ·  -VV verbose & latest
 
   more help:
-    --help                 full options
     --help=<section>      e.g. --help=sources, --help=output
     --help=<flag>          e.g. --help=-c, --help=outdated
     --man                  offline man page

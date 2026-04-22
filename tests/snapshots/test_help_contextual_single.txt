@@ -1,0 +1,10 @@
+  usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+         brew-hop-search --help      (for full help)
+  Fast offline-first Homebrew formula/cask search.
+  parsed: -O
+
+    -O, --outdated  outdated packages
+
+  more help:
+    --help=<section>      e.g. --help=sources, --help=output
+    --man                  offline man page
