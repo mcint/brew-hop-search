@@ -37,5 +37,6 @@ output:
   -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
   -n N[+OFF], --limit N[+OFF]
-                        max results [+offset], 0=all (default: 20)
+                        max results [+offset], 0=all (default: 20, or
+                        $BREW_HOP_SEARCH_LIMIT)
   -v, --verbose         source tags, cache info (-vv per-source detail)

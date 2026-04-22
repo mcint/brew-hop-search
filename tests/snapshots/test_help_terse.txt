@@ -4,7 +4,8 @@
   usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
 
   quick examples:
-    brew-hop-search python               # formulae + casks
+    brew-hop-search python               # formulae + casks (top 20)
+    brew-hop-search python -n 50         # top 50; -n 0 = all, -n 20+20 = page 2
     brew-hop-search -i                   # installed packages
     brew-hop-search -O                   # outdated
     brew-hop-search -q foo | fzf        # pipe to fzf

@@ -72,6 +72,18 @@ def test_version_importable():
     assert re.match(r"\d+\.\d+\.\d+", __version__)
 
 
+def test_limit_env_var_applies():
+    """BREW_HOP_SEARCH_LIMIT sets the default for -n (verified via -q row count)."""
+    import os as _os
+    env = {**_os.environ, "BREW_HOP_SEARCH_LIMIT": "3"}
+    result = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "-f", "-q", "python"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+    nonempty = [ln for ln in result.stdout.splitlines() if ln.strip()]
+    assert len(nonempty) == 3, f"got {len(nonempty)} lines: {result.stdout!r}"
+
+
 def test_cache_status_json():
     """Cache status JSON should be valid and have expected keys."""
     import json

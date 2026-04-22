@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import time
@@ -300,8 +301,10 @@ def main(argv=None):
                      help="aligned columns (like sqlite3 -column)")
     fmt.add_argument("--sql", action="store_true",
                      help="SQLite INSERT statements")
-    fmt.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFF]",
-                     help="max results [+offset], 0=all (default: 20)")
+    fmt.add_argument("-n", "--limit", type=str,
+                     default=os.environ.get("BREW_HOP_SEARCH_LIMIT", "20"),
+                     metavar="N[+OFF]",
+                     help="max results [+offset], 0=all (default: 20, or $BREW_HOP_SEARCH_LIMIT)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
                      help="source tags, cache info (-vv per-source detail)")
 

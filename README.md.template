@@ -24,10 +24,11 @@ brew install brew-hop-search
 ## Examples
 
 ```sh
-brew-hop-search python                 # search formulae + casks
+brew-hop-search python                 # search formulae + casks (top 20)
 brew-hop-search -f python build        # multi-word, formulae only
 brew-hop-search -c -i                  # casks, installed only
-brew-hop-search -i                     # list all installed
+brew-hop-search -i -n0                 # all installed (-n|--limit: N, 0=all, N+offset for paging)
+# BREW_HOP_SEARCH_LIMIT=50 in your shell rc overrides the default 20
 brew-hop-search -q python | fzf        # pipe to fzf
 brew-hop-search --csv python | qsv sort -s name  # sort CSV
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite

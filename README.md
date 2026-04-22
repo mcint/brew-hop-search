@@ -24,10 +24,11 @@ brew install brew-hop-search
 ## Examples
 
 ```sh
-brew-hop-search python                 # search formulae + casks
+brew-hop-search python                 # search formulae + casks (top 20)
 brew-hop-search -f python build        # multi-word, formulae only
 brew-hop-search -c -i                  # casks, installed only
-brew-hop-search -i                     # list all installed
+brew-hop-search -i -n0                 # all installed (-n|--limit: N, 0=all, N+offset for paging)
+# BREW_HOP_SEARCH_LIMIT=50 in your shell rc overrides the default 20
 brew-hop-search -q python | fzf        # pipe to fzf
 brew-hop-search --csv python | qsv sort -s name  # sort CSV
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
@@ -70,7 +71,7 @@ Default search — clean, human-optimal:
 
 With `-v` — source tags and cache info:
 ```
-  -- cache: 10m old   searching formula + cask
+  -- cache: 38m old   searching formula + cask
   # formulae (5/8316)  • brew install python-argcomplete
   f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
   f python-build  1.4.3  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
@@ -131,10 +132,10 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.6 MB
-  formula    8316  10m ago  fts  30MB json
-  cask    7629  10m ago  fts  14MB json
-  installed:f     460  1m ago
-  installed:c      86  1m ago
+  formula    8316  38m ago  fts  30MB json
+  cask    7629  38m ago  fts  14MB json
+  installed:f     460  29m ago
+  installed:c      86  29m ago
   taps      50  3d9h ago
   local:f     161  3d9h ago
   local:c      59  3d9h ago
@@ -182,7 +183,8 @@ output:
   -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
   -n N[+OFF], --limit N[+OFF]
-                        max results [+offset], 0=all (default: 20)
+                        max results [+offset], 0=all (default: 20, or
+                        $BREW_HOP_SEARCH_LIMIT)
   -v, --verbose         source tags, cache info (-vv per-source detail)
 ```
 
@@ -206,7 +208,7 @@ sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 ## Version
 
 ```
-brew-hop-search 0.3.5+c15df7d
+brew-hop-search 0.3.5+8a9f2c8
 ```
 
 ## License
