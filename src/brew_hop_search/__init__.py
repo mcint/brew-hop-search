@@ -3,10 +3,9 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
 import os
+from pathlib import Path
 
-from brew_hop_search._version_resolve import resolve_version
-
-__version__ = resolve_version()
+__version__ = (Path(__file__).parent / "VERSION").read_text().strip()
 
 PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
@@ -71,52 +70,9 @@ def build_info() -> dict:
         return {}
 
 
-def _live_dirty() -> bool:
-    """Live `git status --porcelain` check (for dev-tree installs)."""
-    try:
-        import subprocess
-        from pathlib import Path
-        pkg_dir = Path(__file__).resolve().parent
-        result = subprocess.run(
-            ["git", "-C", str(pkg_dir), "status", "--porcelain", "-uno"],
-            capture_output=True, text=True, timeout=5,
-        )
-        return result.returncode == 0 and bool(result.stdout.strip())
-    except Exception:
-        return False
-
-
 def version_info() -> str:
-    """Full PEP 440 version string (alias for __version__)."""
+    """Alias for __version__, kept for callers that want an explicit function."""
     return __version__
-
-
-def base_version() -> str:
-    """Release-form base of __version__, stripping `.devN` and local labels."""
-    v = __version__
-    v = v.split("+", 1)[0]
-    if ".dev" in v:
-        v = v.split(".dev", 1)[0]
-    return v
-
-
-def dev_marker() -> str:
-    """`(dev+N: hash[+dirty])` display marker for dev builds, `""` otherwise.
-
-    Parses __version__ (already PEP 440 of form `base.devN+hash[.dirty]` for
-    dev builds). `N` (commits since last release tag) is part of the label;
-    hash and optional `+dirty` follow the colon as the specific identifier.
-    """
-    v = __version__
-    if ".dev" not in v:
-        return ""
-    _, _, rest = v.partition(".dev")
-    n, _, local = rest.partition("+")
-    if not local:
-        return f"(dev+{n})"
-    h, _, extra = local.partition(".")
-    inner = h + ("+dirty" if extra == "dirty" else "")
-    return f"(dev+{n}: {inner})"
 
 
 def install_source() -> str:

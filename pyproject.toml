@@ -43,9 +43,9 @@ publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
 [tool.hatch.version]
-source = "code"
-path = "src/brew_hop_search/_version_resolve.py"
-expression = "resolve_version()"
+source = "regex"
+path = "src/brew_hop_search/VERSION"
+pattern = "^(?P<version>.+)$"
 
 [tool.hatch.build]
 artifacts = [
