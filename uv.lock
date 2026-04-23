@@ -10,6 +10,7 @@ resolution-markers = [
 name = "brew-hop-search"
 source = { editable = "." }
 dependencies = [
+    { name = "packaging" },
     { name = "sqlite-utils", version = "3.38", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "sqlite-utils", version = "3.39", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
@@ -21,7 +22,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "sqlite-utils" }]
+requires-dist = [
+    { name = "packaging" },
+    { name = "sqlite-utils" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest" }]

@@ -42,25 +42,18 @@ def _record_check() -> None:
         pass
 
 
-def _parse_version(v: str) -> tuple:
-    """Parse a version's numeric core into a comparable tuple.
+def _parse_version(v: str):
+    """PEP 440 `Version` for comparison, or None if unparseable.
 
-    Strips `+local`, `-dev`, and `.devN` bits so `0.3.7-dev` and `0.3.7`
-    both yield `(0, 3, 7)`. The upgrade-check only cares about whether
-    PyPI has a strictly-newer numeric release; exact PEP 440 pre-release
-    ordering isn't needed here.
+    Uses `packaging.version.Version` so the full ordering holds:
+    `0.3.7.dev0 < 0.3.7 < 0.3.7.post0 < 0.3.8`, and `-dev` / `.devN` /
+    `+local` are all handled correctly without hand-rolled stripping.
     """
-    v = v.split("+", 1)[0]
-    v = v.split("-", 1)[0]
-    if ".dev" in v:
-        v = v.split(".dev", 1)[0]
-    parts = []
-    for p in v.split("."):
-        try:
-            parts.append(int(p))
-        except ValueError:
-            parts.append(0)
-    return tuple(parts)
+    from packaging.version import InvalidVersion, Version
+    try:
+        return Version(v)
+    except InvalidVersion:
+        return None
 
 
 def check_if_due() -> None:
@@ -84,7 +77,9 @@ def check_if_due() -> None:
 
         _record_check()
 
-        if _parse_version(latest) > _parse_version(__version__):
+        cur_v = _parse_version(__version__)
+        latest_v = _parse_version(latest)
+        if cur_v and latest_v and latest_v > cur_v:
             print(
                 dim(f"  brew-hop-search {yellow(latest)} available "
                     f"(current: {__version__})  "

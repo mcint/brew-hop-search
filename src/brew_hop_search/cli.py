@@ -221,7 +221,9 @@ def _show_version(level: int) -> None:
                 data = json_mod.loads(r.read())
             latest = data.get("info", {}).get("version", "")
             if latest:
-                if _parse_version(latest) > _parse_version(__version__):
+                cur_v = _parse_version(__version__)
+                latest_v = _parse_version(latest)
+                if cur_v and latest_v and latest_v > cur_v:
                     print(f"{bold('pypi')}  {yellow(latest)} available (current: {__version__})")
                     print(dim(f"  pip install -U brew-hop-search"))
                 else:
