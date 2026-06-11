@@ -302,6 +302,11 @@ bhs version -vv                   # detailed version info
 - [format-color](format-color.md): no direct overlap, but the
   `--color` flag follows the same "lowercase adverb" convention
   proposed here.
+- [locations](locations.md): adds two cells this cartesian doesn't
+  cover — the **root** noun (multi-root / zerobrew) and the
+  **all-cached** aggregate selector over sources — plus a `detect`
+  verb. Its `--root` adverb and `cached`/`detect` verbs are meant to
+  slot into Option B's subparser plan; impl decides overlap.
 - claude-collab seed: `~/dev-llm/claude-collab/cli-ux/cli-grammar.md`
   — this spec is the first concrete application of the
   parts-of-speech framing.
