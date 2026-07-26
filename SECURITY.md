@@ -1,8 +1,13 @@
 # Security Policy
 
+Maintained by one volunteer; response times are best-effort.
+
 ## Reporting Vulnerabilities
 
-Reports are accepted via age-encrypted email.
+**Preferred:** GitHub Private Vulnerability Reporting — the "Report a
+vulnerability" button on this repo's Security tab.
+
+**Fallback:** age-encrypted email.
 
 **Email:** security@pkgs.mcint.io
 
@@ -21,7 +26,12 @@ Or attach a file:
 age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") -o report.age report.txt
 ```
 
-We will acknowledge receipt within 72 hours and aim to provide an initial assessment within 7 days.
+I aim to acknowledge reports within **14 days**; if you hear nothing
+after 3 weeks, ping again. No SLA is offered. Assessment and fix are
+best-effort; I follow a **90-day coordinated disclosure window** from
+acknowledgment — if a fix will take longer, I'll say so and propose a
+date. Keep the initial report short (a few sentences plus a PoC if
+you have one); no CVSS scores needed.
 
 ## Threat Model & Risk Analysis
 
