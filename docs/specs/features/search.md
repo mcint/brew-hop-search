@@ -11,7 +11,7 @@ you type `brew-hop-search python`.
 
 - **query**: Space-separated terms (AND-matched, all must hit). See
   [Query Syntax](#query-syntax) for anchors, field scoping, phrases.
-- **sources**: `-f`, `-c`, `-i`, `-t`, `-L` (composable)
+- **sources**: `-f`, `-c`, `-i`, `-t`, `-l` (composable)
 - **paging**: `-n N[+OFF]` (default: 20)
 - **cache control**: `--refresh[=DUR]` (alias: `--fresh`), `--stale DUR`
 - **format**: `-q`, `-g`, `--json`, `--csv`, `--tsv`, `--table`, `--sql`, `--multi` (alias `--long`), `-v`, `-vv`

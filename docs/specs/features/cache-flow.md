@@ -26,7 +26,7 @@ This isn't a flag — it's the default behavior for **search**, **`-i`**,
   `{index, installed, outdated, taps, local, all}` (see `--refresh` below)
 - `--stale DUR` — override the threshold beyond which a cache is
   considered stale enough to background-refresh
-- `-L` / `--local` — *no* network, no background refresh; pure cache
+- `-l` / `--local` — *no* network, no background refresh; pure cache
 - `-q` / `--quiet` — disables the trailing status line (results only)
 
 ### `--refresh` selector
@@ -106,7 +106,7 @@ Today the standalone command is sequential and blocking.
 After the result body is printed and stdout is flushed, the next
 behavior depends on whether a background refresh is in flight.
 
-**No bg refresh** (cache fresh enough, `-L`, or refresh skipped): no
+**No bg refresh** (cache fresh enough, `-l`, or refresh skipped): no
 trailing line. Exit immediately.
 
 **Bg refresh in flight**, TTY: we poll the bg sentinel for a short
@@ -188,7 +188,7 @@ bg job finishes on its own.
 
 ## Cache decision matrix
 
-| State                        | -L  | search default                        | --refresh             | --refresh=KIND        |
+| State                        | -l  | search default                        | --refresh             | --refresh=KIND        |
 |------------------------------|-----|---------------------------------------|-----------------------|-----------------------|
 | Fresh cache                  | use | use, no bg                            | sync refresh, then print | sync refresh selected; print |
 | Stale cache (age > stale)    | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
@@ -251,8 +251,8 @@ brew-hop-search -i                          # installed
 brew-hop-search -O                          # outdated
 
 # Pure offline (no network, no bg refresh).
-brew-hop-search -L python
-brew-hop-search -i -L
+brew-hop-search -l python
+brew-hop-search -i -l
 
 # Force refresh, then print fresh results.
 brew-hop-search --refresh python            # all sources this command touches

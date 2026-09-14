@@ -427,7 +427,7 @@ def main(argv=None):
 def _main_inner(argv, _args_holder):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
-        usage="%(prog)s [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]",
+        usage="%(prog)s [-fcitl] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
@@ -447,8 +447,12 @@ def _main_inner(argv, _args_holder):
                      help="installed packages")
     src.add_argument("-t", "--taps", action="store_true",
                      help="tapped repos")
-    src.add_argument("-L", "--local", action="store_true",
+    src.add_argument("-l", "--local", action="store_true",
                      help="local API cache (offline)")
+    # -L was the pre-0.4 spelling. Lowercase = source (cli-vocabulary
+    # capitalization rule). Hidden alias for one release; hint on use.
+    src.add_argument("-L", dest="local_legacy", action="store_true",
+                     help=argparse.SUPPRESS)
 
     # ── info ──
     info = ap.add_argument_group("info")
@@ -537,6 +541,13 @@ def _main_inner(argv, _args_holder):
     )
     args = ap.parse_args(normalized)
     _args_holder.append(args)  # for the timing-footer finally in main()
+
+    # Legacy -L → -l. Fold into args.local; hint once unless quiet.
+    if getattr(args, "local_legacy", False):
+        args.local = True
+        if not args.quiet:
+            print(dim("  -L is now -l (lowercase = source); -L kept as an alias for one release"),
+                  file=sys.stderr)
 
     # Apply user-configured default output format only when no CLI format
     # flag was passed. Priority: CLI flag > env var > TOML config > built-in
@@ -659,7 +670,7 @@ def _main_inner(argv, _args_holder):
         silent_progress = (o_verbose == 0) or bool(args.json) or (fmt is not None)
 
         # Cache-first: -O reads from existing tables and bg-refreshes any stale
-        # dependencies. -L skips network. --refresh promotes to sync.
+        # dependencies. -l skips network. --refresh promotes to sync.
         if not args.local:
             o_stale_api = args.stale if args.stale is not None else stale_api_seconds()
             for k, url in [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]:
@@ -752,7 +763,7 @@ def _main_inner(argv, _args_holder):
         status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 
     # ── determine search sources ──
-    # -f/-c filter which kinds. -i/-t/-L select which data sources.
+    # -f/-c filter which kinds. -i/-t/-l select which data sources.
     # Sources are additive: -i -t searches installed + taps.
     # Default (no source flags): remote API.
     want_formula = not args.casks  # True unless -c only

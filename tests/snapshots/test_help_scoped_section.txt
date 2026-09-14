@@ -8,5 +8,5 @@
       installed packages
     -t, --taps
       tapped repos
-    -L, --local
+    -l, --local
       local API cache (offline)
