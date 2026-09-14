@@ -53,7 +53,7 @@ def _patch_sources(monkeypatch):
     monkeypatch.setattr("brew_hop_search.sources.installed.ensure_cache", fake_installed)
     monkeypatch.setattr("brew_hop_search.sources.taps.ensure_cache", fake_taps)
     monkeypatch.setattr("brew_hop_search.sources.local.ensure_cache", fake_local)
-    monkeypatch.setattr("brew_hop_search.search.search", lambda *a, **kw: [])
+    monkeypatch.setattr("brew_hop_search.cli.search", lambda *a, **kw: [])
     return calls
 
 
@@ -255,3 +255,57 @@ def test_stale_bad_kind_is_a_usage_error(monkeypatch, tmp_path, capsys):
     _, code = _main(monkeypatch, tmp_path, ["--stale=bogus:1h", "foo"])
     assert code == 2
     assert "unknown kind" in capsys.readouterr().err
+
+
+# ── --cached aggregate (locations.md § Aggregate) ──────────────────────────
+
+def test_cached_selects_all_offline_sources_and_no_api(monkeypatch, tmp_path):
+    calls, code = _main(monkeypatch, tmp_path, ["--cached", "foo"])
+    assert code == 0
+    assert len(calls["installed"]) == len(calls["taps"]) == len(calls["local"]) == 1
+    assert calls["api_formula"] == [] and calls["api_cask"] == []
+
+
+def test_cached_equals_itl(monkeypatch, tmp_path):
+    a, _ = _main(monkeypatch, tmp_path, ["--cached", "foo"])
+    b, _ = _main(monkeypatch, tmp_path, ["-itl", "foo"])
+    assert a == b
+
+
+def test_cached_composes_with_kind_filter(monkeypatch, tmp_path):
+    """-f narrows installed/local to formulae; taps has no kind split."""
+    seen = []
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "db.sqlite"))
+    _seed(tmp_path / "db.sqlite", "installed_formula", "installed_cask",
+          "tap", "local_formula", "local_cask")
+    _patch_sources(monkeypatch)
+    # cli binds `search` by name at import; patch the cli's reference.
+    monkeypatch.setattr("brew_hop_search.cli.search",
+                        lambda db, kind, *a, **kw: seen.append(kind) or [])
+    from brew_hop_search.cli import main
+    try:
+        main(["--cached", "-f", "foo"])
+    except SystemExit:
+        pass
+    assert set(seen) == {"installed_formula", "tap", "local_formula"}
+
+
+def test_cached_with_offline_is_allowed(monkeypatch, tmp_path):
+    _seed(tmp_path / "db.sqlite", "installed_formula", "installed_cask",
+          "tap", "local_formula", "local_cask")
+    calls, code = _main(monkeypatch, tmp_path, ["--cached", "--offline", "foo"])
+    assert code == 0
+    assert calls["installed"] == [] and calls["taps"] == [] and calls["local"] == []
+
+
+def test_cached_without_query_lists_not_hints(monkeypatch, tmp_path, capsys):
+    """Like -i alone, --cached alone is a listing, not the usage hint screen."""
+    calls, code = _main(monkeypatch, tmp_path, ["--cached"])
+    assert code == 0
+    assert "try:" not in capsys.readouterr().out
+    assert len(calls["installed"]) == 1
+
+
+def test_help_lists_cached():
+    out, _, _ = _run("--help")
+    assert "--cached" in out

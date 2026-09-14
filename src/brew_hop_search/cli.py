@@ -516,6 +516,9 @@ def _main_inner(argv, _args_holder):
     # capitalization rule). Hidden alias for one release; hint on use.
     src.add_argument("-L", dest="local_legacy", action="store_true",
                      help=argparse.SUPPRESS)
+    src.add_argument("--cached", action="store_true",
+                     help="every offline source at once (= -itl): installed, "
+                          "taps, local API cache; never the network index")
 
     # ── info ──
     info = ap.add_argument_group("info")
@@ -621,6 +624,11 @@ def _main_inner(argv, _args_holder):
     # --offline says "no network"; --refresh (any form) says "go to network".
     if args.offline and args.refresh is not None:
         ap.error("--offline and --refresh conflict. Drop one.")
+
+    # --cached: the named all-offline aggregate (locations.md § Aggregate).
+    # Expands to the three offline sources; -f/-c and all adverbs compose.
+    if args.cached:
+        args.installed = args.taps = args.local = True
 
     # Apply user-configured default output format only when no CLI format
     # flag was passed. Priority: CLI flag > env var > TOML config > built-in

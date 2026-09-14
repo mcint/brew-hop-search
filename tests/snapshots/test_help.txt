@@ -14,6 +14,8 @@ sources (composable, default: remote API):
   -i, --installed       installed packages
   -t, --taps            tapped repos
   -l, --local           local API cache (offline)
+  --cached              every offline source at once (= -itl): installed,
+                        taps, local API cache; never the network index
 
 info:
   -h [MODE]             terse help (or MODE: man, <section>, <flag>)

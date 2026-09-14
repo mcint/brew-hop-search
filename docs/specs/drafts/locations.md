@@ -20,8 +20,15 @@ subcommand layer there — *let impl time decide* whether `detect`
 and the root-selection adverb land as part of the Option B
 subparser work or separately.
 
-Live thread: **all-cached search** (§ Aggregate). Roots/`detect`
-(§ Roots, § detect) are foundational but follow.
+**Shipped 2026-09-13:** the `--cached` adverb form of the aggregate
+(§ Aggregate) — expands to installed + taps + local, composes with
+`-f`/`-c`, `--offline`, `--stale`. The `cached` subcommand spelling
+waits on Option B. The "two aggregate copies" question below was
+resolved the simple way for now: `--cached` includes `local_*` (brew's
+own on-disk cache) and never our network-fed `formula`/`cask` tables,
+so the promise "never the network index" is literal.
+
+Roots/`detect` (§ Roots, § detect) are foundational but follow.
 
 ## Purpose
 
