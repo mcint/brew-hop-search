@@ -482,6 +482,9 @@ def _main_inner(argv, _args_holder):
                        help="sync refresh: bare=force, =DUR=if older, "
                             "=KIND[,KIND...] (kinds: index,installed,outdated,"
                             "taps,local,all). --fresh is an alias")
+    cache.add_argument("--offline", action="store_true",
+                       help="no network, no refresh: serve only what is cached "
+                            "(conflicts with --refresh)")
     cache.add_argument("--stale", nargs="?", type=parse_duration,
                        const=stale_api_seconds(), default=None, metavar="DUR",
                        help="background refresh threshold (default: 6h, "
@@ -548,6 +551,10 @@ def _main_inner(argv, _args_holder):
         if not args.quiet:
             print(dim("  -L is now -l (lowercase = source); -L kept as an alias for one release"),
                   file=sys.stderr)
+
+    # --offline says "no network"; --refresh (any form) says "go to network".
+    if args.offline and args.refresh is not None:
+        ap.error("--offline and --refresh conflict. Drop one.")
 
     # Apply user-configured default output format only when no CLI format
     # flag was passed. Priority: CLI flag > env var > TOML config > built-in
@@ -670,8 +677,8 @@ def _main_inner(argv, _args_holder):
         silent_progress = (o_verbose == 0) or bool(args.json) or (fmt is not None)
 
         # Cache-first: -O reads from existing tables and bg-refreshes any stale
-        # dependencies. -l skips network. --refresh promotes to sync.
-        if not args.local:
+        # dependencies. -l / --offline skip network. --refresh promotes to sync.
+        if not args.local and not args.offline:
             o_stale_api = args.stale if args.stale is not None else stale_api_seconds()
             for k, url in [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]:
                 api.ensure_cache(k, url, force=force_refresh_for(args, "index"),
@@ -784,22 +791,41 @@ def _main_inner(argv, _args_holder):
         if "installed" in args.refresh and not args.installed:
             installed.ensure_cache(force=True)
 
+    # --offline: never call a source's ensure_cache (no subprocess, no
+    # network, no bg refresh). Every selected table must already exist.
+    def _prepare(refresh_fn, *tables: str) -> None:
+        if not args.offline:
+            refresh_fn()
+            return
+        db_ = get_db()
+        for t in tables:
+            if not table_exists(db_, t):
+                print(red(f"--offline: no cache for {t}. "
+                          "Run once without --offline to build it."),
+                      file=sys.stderr)
+                sys.exit(1)
+
     if args.installed:
-        installed.ensure_cache(force=_force("installed"))
+        inst_tables = (["installed_formula"] if want_formula else []) + \
+                      (["installed_cask"] if want_cask else [])
+        _prepare(lambda: installed.ensure_cache(force=_force("installed")),
+                 *inst_tables)
         if want_formula:
             search_sources.append(("installed_formula", "installed formulae", "name"))
         if want_cask:
             search_sources.append(("installed_cask", "installed casks", "token"))
 
     if args.local:
-        local.ensure_cache(force=_force("local"))
+        loc_tables = (["local_formula"] if want_formula else []) + \
+                     (["local_cask"] if want_cask else [])
+        _prepare(lambda: local.ensure_cache(force=_force("local")), *loc_tables)
         if want_formula:
             search_sources.append(("local_formula", "local formulae", "name"))
         if want_cask:
             search_sources.append(("local_cask", "local casks", "token"))
 
     if args.taps:
-        taps.ensure_cache(force=_force("taps"))
+        _prepare(lambda: taps.ensure_cache(force=_force("taps")), "tap")
         search_sources.append(("tap", "taps", "slug"))
 
     # Default: remote API (only if no source flags set)
@@ -811,9 +837,11 @@ def _main_inner(argv, _args_holder):
             api_kinds.append(("cask", api.CASK_URL))
 
         for kind, url in api_kinds:
-            if not api.ensure_cache(kind, url, _force("index"), stale, fresh):
-                print(red(f"No cache for {kind} and fetch failed."), file=sys.stderr)
-                sys.exit(1)
+            def _api_refresh(kind=kind, url=url):
+                if not api.ensure_cache(kind, url, _force("index"), stale, fresh):
+                    print(red(f"No cache for {kind} and fetch failed."), file=sys.stderr)
+                    sys.exit(1)
+            _prepare(_api_refresh, kind)
             pk = "name" if kind == "formula" else "token"
             search_sources.append((kind, kind, pk))
 

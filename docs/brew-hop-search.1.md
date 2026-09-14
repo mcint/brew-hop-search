@@ -100,6 +100,13 @@ controls how much context is shown (see `docs/specs/OUTPUT.md` for full spec).
   Synchronous refresh. Bare `--refresh` forces immediate re-fetch.
   `--refresh=1h` refreshes only if cache is older than 1 hour.
 
+* `--offline`:
+  No network and no refresh of any kind: serve only what is already
+  cached, for every selected source. Errors if a selected source has no
+  cache yet. Conflicts with `--refresh`. Unlike `-l` (which *selects*
+  brew's on-disk API cache as a source), `--offline` is an adverb that
+  composes with any source.
+
 * `--stale`[`=`*DUR*]:
   Background refresh threshold (default: 6h). Triggers a detached
   subprocess to update the cache without blocking the current search.

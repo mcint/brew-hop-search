@@ -31,6 +31,8 @@ cache:
                         =KIND[,KIND...] (kinds:
                         index,installed,outdated,taps,local,all). --fresh is
                         an alias
+  --offline             no network, no refresh: serve only what is cached
+                        (conflicts with --refresh)
   --stale [DUR]         background refresh threshold (default: 6h,
                         $BREW_HOP_SEARCH_STALE_API to override)
 
