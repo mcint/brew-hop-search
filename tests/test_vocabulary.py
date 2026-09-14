@@ -115,3 +115,73 @@ def test_combined_short_flags_with_l(monkeypatch, tmp_path):
     """`-itl` is the spelled-out all-cached stack; must parse."""
     calls, _ = _main(monkeypatch, tmp_path, ["-itl", "foo"])
     assert len(calls["installed"]) == len(calls["taps"]) == len(calls["local"]) == 1
+
+
+# ── --offline ──────────────────────────────────────────────────────────────
+
+def _seed(db_path, *tables):
+    """Create empty-but-present source tables so offline reads have a cache."""
+    import time
+    import sqlite_utils
+    db = sqlite_utils.Database(db_path)
+    pk = {"formula": "name", "cask": "token", "installed_formula": "name",
+          "installed_cask": "token", "tap": "slug", "local_formula": "name",
+          "local_cask": "token"}
+    for t in tables:
+        db[t].insert({pk[t]: "seed", "desc": "", "homepage": "", "version": "",
+                      "raw": "{}"}, pk=pk[t])
+        db["_meta"].insert({"kind": t, "updated_at": time.time(), "count": 1},
+                           pk="kind", replace=True)
+
+
+def test_offline_search_skips_all_network_and_refresh(monkeypatch, tmp_path):
+    _seed(tmp_path / "db.sqlite", "formula", "cask")
+    calls, code = _main(monkeypatch, tmp_path, ["--offline", "foo"])
+    assert code == 0
+    assert calls["api_formula"] == [] and calls["api_cask"] == []
+
+
+def test_offline_with_missing_cache_errors_clearly(monkeypatch, tmp_path, capsys):
+    calls, code = _main(monkeypatch, tmp_path, ["--offline", "foo"])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "offline" in err and "formula" in err
+    assert calls["api_formula"] == []
+
+
+def test_offline_installed_does_not_touch_brew(monkeypatch, tmp_path):
+    _seed(tmp_path / "db.sqlite", "installed_formula", "installed_cask")
+    calls, code = _main(monkeypatch, tmp_path, ["-i", "--offline", "foo"])
+    assert code == 0
+    assert calls["installed"] == []
+
+
+def test_offline_taps_and_local(monkeypatch, tmp_path):
+    _seed(tmp_path / "db.sqlite", "tap", "local_formula", "local_cask")
+    calls, code = _main(monkeypatch, tmp_path, ["-tl", "--offline", "foo"])
+    assert code == 0
+    assert calls["taps"] == [] and calls["local"] == []
+
+
+@pytest.mark.parametrize("refresh", ["--refresh", "--refresh=6h", "--refresh=taps", "--fresh"])
+def test_offline_conflicts_with_refresh(monkeypatch, tmp_path, capsys, refresh):
+    # Query first: bare --refresh has nargs="?" and would swallow a
+    # following positional as its value.
+    _, code = _main(monkeypatch, tmp_path, ["foo", "--offline", refresh])
+    assert code == 2
+    assert "--offline and --refresh conflict" in capsys.readouterr().err
+
+
+def test_offline_outdated_skips_ensure_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr("brew_hop_search.outdated.collect_outdated",
+                        lambda *a, **kw: {"formulae": [], "casks": []})
+    monkeypatch.setattr("brew_hop_search.outdated.display_outdated",
+                        lambda *a, **kw: None)
+    calls, code = _main(monkeypatch, tmp_path, ["-O", "--offline"])
+    assert code == 0
+    assert calls["api_formula"] == [] and calls["installed"] == []
+
+
+def test_help_lists_offline():
+    out, _, _ = _run("--help")
+    assert "--offline" in out

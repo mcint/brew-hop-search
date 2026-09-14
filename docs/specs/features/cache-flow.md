@@ -27,6 +27,9 @@ This isn't a flag — it's the default behavior for **search**, **`-i`**,
 - `--stale DUR` — override the threshold beyond which a cache is
   considered stale enough to background-refresh
 - `-l` / `--local` — *no* network, no background refresh; pure cache
+- `--offline` — adverb form of the same promise for *any* source: no
+  network, no `brew` subprocess, no bg refresh; missing cache is an
+  error, not a fetch. Conflicts with `--refresh`.
 - `-q` / `--quiet` — disables the trailing status line (results only)
 
 ### `--refresh` selector
@@ -188,11 +191,14 @@ bg job finishes on its own.
 
 ## Cache decision matrix
 
-| State                        | -l  | search default                        | --refresh             | --refresh=KIND        |
+| State                        | -l / --offline | search default                        | --refresh             | --refresh=KIND        |
 |------------------------------|-----|---------------------------------------|-----------------------|-----------------------|
 | Fresh cache                  | use | use, no bg                            | sync refresh, then print | sync refresh selected; print |
 | Stale cache (age > stale)    | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
 | No cache                     | err | sync refresh, then print              | sync refresh, then print | sync refresh selected, then print |
+
+`--offline` + any `--refresh` form is rejected at parse time
+(`--offline and --refresh conflict. Drop one.`).
 
 *"Sync refresh, then print"* keeps the existing first-run UX — there's
 nothing to print until the cache exists.

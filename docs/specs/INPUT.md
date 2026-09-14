@@ -58,9 +58,15 @@ whether more results exist. Section header shows `shown/total`.
 | `--refresh` | Force immediate synchronous re-fetch |
 | `--refresh=DUR` | Synchronous refresh only if cache older than DUR |
 | `--stale DUR` | Background refresh threshold (default: 6h) |
+| `--offline` | No network, no refresh, no subprocess; every selected source must already be cached (else exit 1). Conflicts with `--refresh`. |
 
 Background refresh spawns a detached subprocess that updates the
 cache without blocking the current search.
+
+`--offline` is an **adverb**: it composes with any source (`-i --offline`,
+`-t --offline`, default api tables). `-l` is a **source** (brew's own
+on-disk API cache); the two are correlated but distinct — see
+`drafts/cli-vocabulary.md` § Problem 1.
 
 ### Duration Syntax
 
