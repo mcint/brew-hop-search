@@ -116,16 +116,15 @@ def test_commit_count_falls_back_to_build_info(monkeypatch):
 def test_commit_count_zero_when_no_git_no_build_info(monkeypatch):
     """No git and no _build_info → 0 (renders plain VERSION)."""
     import sys
-    monkeypatch.delitem(sys.modules, "brew_hop_search._build_info", raising=False)
-
-    # Make import fail too.
-    import builtins
-    real_import = builtins.__import__
-    def _no_build_info(name, *a, **kw):
-        if name == "brew_hop_search._build_info":
-            raise ImportError("simulated no _build_info")
-        return real_import(name, *a, **kw)
-    monkeypatch.setattr(builtins, "__import__", _no_build_info)
+    import brew_hop_search
+    # A None entry in sys.modules makes `from brew_hop_search import
+    # _build_info` raise ModuleNotFoundError regardless of whether the
+    # generated file exists on disk. (Patching builtins.__import__ doesn't
+    # work: the from-import path goes through importlib._handle_fromlist,
+    # which bypasses the builtin hook.) Also drop the package attribute a
+    # prior import may have left behind.
+    monkeypatch.setitem(sys.modules, "brew_hop_search._build_info", None)
+    monkeypatch.delattr(brew_hop_search, "_build_info", raising=False)
 
     import subprocess as _sp
     def _raise(*a, **kw): raise OSError("simulated no git")
