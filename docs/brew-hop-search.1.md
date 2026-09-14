@@ -56,6 +56,12 @@ Sources are composable. Default (no flags) searches the remote API index.
 * `-l`, `--local`:
   Brew's local API cache at `$(brew --cache)/api/` (offline, calls `brew --cache`).
 
+* `--cached`:
+  Every offline source at once — installed, taps, and the local API
+  cache (`= -itl`). Never the network index. Composes with `-f`/`-c`
+  and every adverb; `--cached --offline` also skips the local refresh
+  scans.
+
 Combine freely: `-i -f` searches installed formulae only, `-i -t` searches
 both installed and taps.
 

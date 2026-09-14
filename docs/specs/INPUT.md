@@ -27,6 +27,7 @@ Sources are composable and additive. Default (no flags): remote API.
 | `-i` | installed packages | `installed_formula`, `installed_cask` | `brew info --json=v2 --installed` |
 | `-t` | tapped repos | `tap` | `brew --repository` + .rb scan |
 | `-l` | brew's local API cache | `local_formula`, `local_cask` | `brew --cache` |
+| `--cached` | aggregate: every offline source (`= -itl`) | `installed_*`, `tap`, `local_*` | as above; never the network index |
 
 `-f` and `-c` are **filters** (restrict which kinds appear).
 `-i`, `-t`, `-l` are **sources** (select where data comes from).

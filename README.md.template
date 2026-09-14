@@ -50,6 +50,7 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 | Installed | `-i` | `brew info --json=v2 --installed` | Yes |
 | Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
 | Local | `-l` | Brew's API cache at `$(brew --cache)/api/` | Yes |
+| All cached | `--cached` | Installed + taps + local at once (`= -itl`); never the network | Yes |
 | Outdated | `-O` | Compares installed vs API index | No |
 | Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 

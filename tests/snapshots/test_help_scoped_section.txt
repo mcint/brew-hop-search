@@ -10,3 +10,5 @@
       tapped repos
     -l, --local
       local API cache (offline)
+    --cached
+      every offline source at once (= -itl): installed, taps, local API cache; never the network index
