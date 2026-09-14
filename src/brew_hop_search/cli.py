@@ -195,13 +195,27 @@ def _ttl_for(kind: str) -> tuple[int, str, str]:
     return val, src, env_name
 
 
-def show_cache_status(verbose: int = 1) -> None:
+def _show_brew_version(verbose: int, force: bool = False) -> None:
+    """`brew  7.0.1` line; at -v, one line per version-gated feature."""
+    from brew_hop_search import brewver
+    have = brewver.brew_version(force=force)
+    print(f"  {bold('brew')}  {brewver.format_version(have)}")
+    if verbose >= 2:
+        for feat, needs in brewver.FEATURES.items():
+            ok = have is not None and have >= needs
+            mark = green("✓") if ok else red("✗")
+            tail = "" if ok else dim(f"  needs {brewver.format_version(needs)}")
+            print(f"    {mark} {feat}{tail}")
+
+
+def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
     db_exists = DB_PATH.exists()
     size_str = ""
     if db_exists:
         size_mb = DB_PATH.stat().st_size / (1024 * 1024)
         size_str = f"  {dim(f'{size_mb:.1f} MB')}"
     print(f"  {bold('db')}  {CACHE_DIR.name}/{DB_PATH.name}{size_str}")
+    _show_brew_version(verbose, force=refresh_brew)
 
     if not db_exists:
         print(dim("  no database — run a search to build the index"))
@@ -268,12 +282,18 @@ def show_cache_status_json() -> None:
     """Machine-readable cache status with meta envelope."""
     import json as json_mod
     from brew_hop_search.display import _envelope
+    from brew_hop_search import brewver
     db_exists = DB_PATH.exists()
+    have = brewver.brew_version()
     info = {
         "cache_dir": str(CACHE_DIR),
         "db_path": str(DB_PATH),
         "db_exists": db_exists,
         "db_size_bytes": DB_PATH.stat().st_size if db_exists else 0,
+        "brew": {
+            "version": brewver.format_version(have) if have else None,
+            "features": brewver.feature_table(have),
+        },
         "sources": {},
     }
     source_count = 0
@@ -606,7 +626,9 @@ def _main_inner(argv, _args_holder):
         if args.json:
             show_cache_status_json()
         else:
-            show_cache_status(verbose=c_verbose)
+            # Bare --refresh on -C re-probes `brew --version` too.
+            show_cache_status(verbose=c_verbose,
+                              refresh_brew=(args.refresh == 0))
         return
 
     # ── outdated mode ──

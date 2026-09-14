@@ -15,12 +15,18 @@ Tracks when each source was last refreshed and how many entries it had.
 CREATE TABLE [_meta] (
    [kind] TEXT PRIMARY KEY,    -- source identifier (e.g. "formula", "installed_cask")
    [updated_at] FLOAT,        -- unix timestamp of last refresh
-   [count] INTEGER             -- entry count at last refresh
+   [count] INTEGER,            -- entry count at last refresh
+   [value] TEXT                -- optional scalar payload (added lazily via alter)
 );
 ```
 
 Known `kind` values: `formula`, `cask`, `installed_formula`, `installed_cask`,
-`tap`, `local_formula`, `local_cask`, `version_check`.
+`tap`, `local_formula`, `local_cask`, `version_check`, `brew_version`.
+
+`brew_version` is a scalar row: `value` holds the detected `brew --version`
+(e.g. `7.0.1`), `count` is 0, `updated_at` drives a 6h TTL. The `value`
+column is added on first write (`alter=True`), so older databases upgrade
+in place.
 
 ### `formula` — remote API formulae
 
