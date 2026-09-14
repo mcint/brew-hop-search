@@ -49,7 +49,7 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 | Remote API | *(default)* | `formulae.brew.sh` | No |
 | Installed | `-i` | `brew info --json=v2 --installed` | Yes |
 | Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
-| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
+| Local | `-l` | Brew's API cache at `$(brew --cache)/api/` | Yes |
 | Outdated | `-O` | Compares installed vs API index | No |
 | Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 
@@ -146,7 +146,7 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 ## Usage
 
 ```
-usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+usage: brew-hop-search [-fcitl] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
@@ -159,7 +159,7 @@ sources (composable, default: remote API):
   -c, --casks, --cask   casks only
   -i, --installed       installed packages
   -t, --taps            tapped repos
-  -L, --local           local API cache (offline)
+  -l, --local           local API cache (offline)
 
 info:
   -h [MODE]             terse help (or MODE: man, <section>, <flag>)

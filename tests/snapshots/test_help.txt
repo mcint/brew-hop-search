@@ -1,4 +1,4 @@
-usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+usage: brew-hop-search [-fcitl] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
 
 Fast offline-first Homebrew formula/cask search.
 
@@ -13,7 +13,7 @@ sources (composable, default: remote API):
   -c, --casks, --cask   casks only
   -i, --installed       installed packages
   -t, --taps            tapped repos
-  -L, --local           local API cache (offline)
+  -l, --local           local API cache (offline)
 
 info:
   -h [MODE]             terse help (or MODE: man, <section>, <flag>)

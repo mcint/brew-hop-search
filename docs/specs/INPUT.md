@@ -26,10 +26,10 @@ Sources are composable and additive. Default (no flags): remote API.
 | `-c` | filter: casks only | (filters kind) | — |
 | `-i` | installed packages | `installed_formula`, `installed_cask` | `brew info --json=v2 --installed` |
 | `-t` | tapped repos | `tap` | `brew --repository` + .rb scan |
-| `-L` | brew's local API cache | `local_formula`, `local_cask` | `brew --cache` |
+| `-l` | brew's local API cache | `local_formula`, `local_cask` | `brew --cache` |
 
 `-f` and `-c` are **filters** (restrict which kinds appear).
-`-i`, `-t`, `-L` are **sources** (select where data comes from).
+`-i`, `-t`, `-l` are **sources** (select where data comes from).
 Combine freely: `-i -f` = installed formulae only.
 
 ## Paging

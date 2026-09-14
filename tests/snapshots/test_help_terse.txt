@@ -1,4 +1,4 @@
-  usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+  usage: brew-hop-search [-fcitl] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
          brew-hop-search --help      (for full help)
   Fast offline-first Homebrew formula/cask search.
 

@@ -53,7 +53,7 @@ Sources are composable. Default (no flags) searches the remote API index.
 * `-t`, `--taps`:
   Tapped repos (calls `brew --repository`).
 
-* `-L`, `--local`:
+* `-l`, `--local`:
   Brew's local API cache at `$(brew --cache)/api/` (offline, calls `brew --cache`).
 
 Combine freely: `-i -f` searches installed formulae only, `-i -t` searches
