@@ -318,6 +318,14 @@ bhs version -vv                   # detailed version info
 
 ## Open questions
 
+- **Implicit `search` verb (Option B).** Resolved in principle in
+  `docs/research/2026-09-14-strategy-toward-1-0.md` § 3: keep the fast
+  path (`bhs python` = `bhs search python`), but make it switchable —
+  `[cli] implicit_verb = false` / `BREW_HOP_SEARCH_IMPLICIT_VERB=0`
+  turns it into a usage error with a hint; verbs win bare and
+  `bhs -- <name>` / `bhs search <name>` reach a package that collides
+  with a verb; `-v` prints when the implicit verb fired. Draft verbs
+  hide behind `BREW_HOP_SEARCH_DRAFT=1`.
 - **`-l` collision with shell tools?** Some tools use `-l` for
   "long". We don't have a long-format conflict yet (`--multi`
   / `--long` is the long format). Probably fine; flag for review at
