@@ -169,12 +169,22 @@ def fmt_cask(f: dict) -> str:
     )
 
 
-def fmt_tap_formula(f: dict, show_date: bool = False) -> str:
+def fmt_tap_formula(f: dict, show_date: bool = False,
+                    show_trust: bool = False) -> str:
     extra_parts = [dim(f.get("tap", ""))]
     if show_date and f.get("modified_at"):
         from datetime import datetime
         ts = datetime.fromtimestamp(f["modified_at"]).strftime("%Y-%m-%d")
         extra_parts.append(dim(ts))
+    if show_trust and f.get("trusted") is not None:
+        # brew ≥ 6.0 tap trust (sources/taps.fetch_tap_meta). None = unknown
+        # (older brew, or tap gone between scan and tap-info) → say nothing.
+        if f.get("official"):
+            extra_parts.append(dim("official"))
+        elif f.get("trusted"):
+            extra_parts.append(dim("trusted"))
+        else:
+            extra_parts.append(red("untrusted"))
     return _fmt_entry(
         bold(magenta(f["name"])),
         f.get("version", ""),
@@ -276,7 +286,7 @@ def display_tap_section(results: list, quiet: bool = False,
         prefix = "    "
     show_date = verbose >= 2
     for item in results:
-        print(f"{prefix}{fmt_tap_formula(item, show_date=show_date)}")
+        print(f"{prefix}{fmt_tap_formula(item, show_date=show_date, show_trust=show_date)}")
 
 
 def display_installed_section(results: list, kind: str, quiet: bool = False,

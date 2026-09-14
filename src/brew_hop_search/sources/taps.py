@@ -107,11 +107,76 @@ def scan_taps() -> list[dict]:
     return list(by_slug.values())
 
 
+# \u2500\u2500 tap trust metadata (brew \u2265 6.0: `brew tap-info --installed --json=v1`) \u2500\u2500
+
+_TAP_INFO_TIMEOUT = 60
+
+
+def _tap_meta_from_json(data: list[dict]) -> dict[str, dict]:
+    """tap-info JSON \u2192 {tap_name: {trusted, official, remote, head, branch,
+    last_commit, path}}. Keeps only what we display or might diff later."""
+    meta: dict[str, dict] = {}
+    for t in data or []:
+        name = t.get("name")
+        if not name:
+            continue
+        meta[name] = {
+            "trusted": bool(t.get("trusted", False)),
+            "official": bool(t.get("official", False)),
+            "remote": t.get("remote") or "",
+            "head": t.get("HEAD") or "",
+            "branch": t.get("branch") or "",
+            "last_commit": t.get("last_commit") or "",
+            "path": t.get("path") or "",
+        }
+    return meta
+
+
+def fetch_tap_meta() -> dict[str, dict]:
+    """Run tap-info when brew is new enough; {} (and a recorded skip) otherwise.
+
+    Failure is never fatal \u2014 trust is an enrichment, the .rb scan is the
+    source of truth for what exists.
+    """
+    from brew_hop_search import brewver
+    if not brewver.supports("tap-info-trusted"):
+        return {}
+    try:
+        r = subprocess.run(["brew", "tap-info", "--installed", "--json=v1"],
+                           capture_output=True, text=True,
+                           timeout=_TAP_INFO_TIMEOUT)
+        if r.returncode != 0:
+            return {}
+        return _tap_meta_from_json(json.loads(r.stdout))
+    except Exception:
+        return {}
+
+
+def _annotate_trust(rows: list[dict], meta: dict[str, dict]) -> None:
+    """Fold trusted/official onto each tap row in place.
+
+    Stored as 0/1 for SQLite; None when the tap isn't in tap-info (unknown),
+    which is distinct from 'known untrusted'.
+    """
+    for row in rows:
+        m = meta.get(row.get("tap", ""))
+        if m is None:
+            row["trusted"] = None
+            row["official"] = None
+        else:
+            row["trusted"] = int(m["trusted"])
+            row["official"] = int(m["official"])
+
+
 def refresh(silent: bool = False) -> bool:
     if not silent:
         print(dim("  \u21bb scanning taps \u2026"), file=sys.stderr)
     try:
         items = scan_taps()
+        meta = fetch_tap_meta()
+        # Annotate the scanned items (not just the row projection): search
+        # returns the stored `raw` JSON, so display only sees what's in it.
+        _annotate_trust(items, meta)
         db = get_db()
         rows = [
             {
@@ -123,13 +188,15 @@ def refresh(silent: bool = False) -> bool:
                 "version": item["version"],
                 "added_at": item.get("added_at", 0.0),
                 "modified_at": item.get("modified_at", 0.0),
+                "trusted": item.get("trusted"),
+                "official": item.get("official"),
                 "raw": json.dumps(item),
             }
             for item in items
         ]
         import_to_db(db, "tap", rows,
                       ["slug", "name", "tap", "desc", "homepage", "version",
-                       "added_at", "modified_at", "raw"],
+                       "added_at", "modified_at", "trusted", "official", "raw"],
                       "slug", ["name", "tap", "desc"])
         if not silent:
             print(dim(f"  \u2713 indexed {len(rows)} tap formulae/casks"), file=sys.stderr)

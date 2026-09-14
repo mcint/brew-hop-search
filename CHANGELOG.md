@@ -30,6 +30,11 @@ first brew-7.0-aware plumbing. Minor bump because `-L` is renamed
   reports what it skipped. `-C` shows the brew version; `-C -v` lists
   each gated feature; `-C --json` carries a `brew` block.
   `$BREW_HOP_SEARCH_BREW_VERSION` overrides for tests.
+- **Tap trust in `-t`.** On brew 6.0+, each tap row carries
+  `trusted` / `official` from `brew tap-info --installed --json=v1`;
+  `-t -v` shows `official`, `trusted`, or `untrusted`. First real
+  consumer of the version gate: older brews skip it and report the
+  skip at `-v`.
 
 ### Build / tests
 

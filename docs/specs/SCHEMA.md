@@ -86,11 +86,18 @@ CREATE TABLE [tap] (
    [version] TEXT,
    [added_at] FLOAT,          -- file birthtime (macOS) or mtime
    [modified_at] FLOAT,       -- file mtime
-   [raw] TEXT
+   [trusted] INTEGER,         -- 0/1 from `brew tap-info` (brew ≥ 6.0); NULL = unknown
+   [official] INTEGER,        -- 0/1 Homebrew-owned tap; NULL = unknown
+   [raw] TEXT                 -- scanned item incl. trusted/official (display reads raw)
 );
 ```
 
 FTS5: `tap_fts` on `(name, tap, desc)`, porter tokenizer.
+
+`trusted` / `official` come from `brew tap-info --installed --json=v1`,
+gated by `brewver.supports("tap-info-trusted")` (min 6.0.0). On older
+brew, or when tap-info fails, both are NULL for every row — "unknown",
+which display renders as nothing, distinct from 0 ("untrusted").
 
 Note: `added_at` and `modified_at` are new in schema v1. Older databases
 without these columns will still work — display code handles missing fields.
