@@ -20,6 +20,7 @@ No query, no paging, no source flags.
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.5 MB
+  brew  7.0.1
   formula    8306  1h12m ago  ttl 6h        fts  30MB json
   cask       7596  1h12m ago  ttl 6h        fts  14MB json
   installed:f     460  1h11m ago  ttl 1h
@@ -29,19 +30,33 @@ No query, no paging, no source flags.
   local:c          59  1d23h ago  ttl 1h
 ```
 
-Compact: one line per source. DB path and size on first line.
+Compact: one line per source. DB path and size on first line, then the
+detected Homebrew version (`unknown` when `brew` is not on PATH).
 Per-source: label, entry count (right-aligned), age, **ttl** (threshold
 beyond which the source will be background-refreshed on next read), FTS
 status, JSON file size.
 
-### `-v`: ttl source layer
+The brew version is cached in `_meta` (kind `brew_version`, 6h TTL) so
+`brew --version` isn't shelled out on every run. `-C --refresh` re-probes.
+`$BREW_HOP_SEARCH_BREW_VERSION=6.1.0` overrides detection (test hook, same
+layering as `STALE_*`). See `brewver.py`.
 
-Shows where each TTL came from (`default`, `env`):
+### `-v`: ttl source layer + gated features
+
+Shows where each TTL came from (`default`, `env`), and one line per
+version-gated brew feature with the minimum version when unavailable:
 
 ```
+  brew  6.1.0
+    ✓ tap-info-trusted
+    ✗ vulns  needs 7.0.0
   formula    8306  1h12m ago  ttl 6h (default)        fts  30MB json
   installed:f  460  1h11m ago  ttl 2s (env: BREW_HOP_SEARCH_STALE_INSTALLED)
 ```
+
+Features that a command skips because brew is too old are reported at
+the end of that command's run (`skipped <feature>: needs brew X, have Y`),
+never silently dropped.
 
 ### `-vv`: next-refresh ETA
 
@@ -60,6 +75,10 @@ Adds `fresh for <duration>` (or `stale` if already past):
   "db_path": "...",
   "db_exists": true,
   "db_size_bytes": 52658176,
+  "brew": {
+    "version": "7.0.1",
+    "features": { "tap-info-trusted": true, "vulns": true, "doctor-json": true }
+  },
   "sources": {
     "formula": { "count": 8307, "age_seconds": 7200.0, "updated_at": 1712000000, "fts": true },
     "cask": { "count": 7589, "age_seconds": 7200.0, "updated_at": 1712000000, "fts": true }
