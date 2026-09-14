@@ -1014,6 +1014,13 @@ def _main_inner(argv, _args_holder):
     if verbose >= 1 and total == 0:
         print(dim(f"  no results{f' for {query!r}' if query else ''}"))
 
+    # Features skipped because brew is too old (brewver gate). Said once,
+    # at -v, so a missing enrichment is never a silent absence.
+    if verbose >= 2:
+        from brew_hop_search import brewver
+        for line in brewver.skipped_report():
+            print(dim(f"  # [brew] {line}"), file=sys.stderr)
+
     # Trailing status: hold the terminal until any in-flight bg refreshes
     # complete (or ^C). TTY-only — pipelines exit immediately.
     sys.stdout.flush()

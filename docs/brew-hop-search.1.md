@@ -51,7 +51,11 @@ Sources are composable. Default (no flags) searches the remote API index.
   Installed packages (calls `brew info`).
 
 * `-t`, `--taps`:
-  Tapped repos (calls `brew --repository`).
+  Tapped repos (calls `brew --repository`, scans `.rb` files). On
+  Homebrew 6.0+ each row also carries the tap's trust state from
+  `brew tap-info --installed --json=v1`; `-t -v` shows `official`,
+  `trusted`, or `untrusted` per result. Older brews skip that step and
+  say so at `-v`.
 
 * `-l`, `--local`:
   Brew's local API cache at `$(brew --cache)/api/` (offline, calls `brew --cache`).

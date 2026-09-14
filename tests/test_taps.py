@@ -55,6 +55,9 @@ def isolated_db(tmp_path, monkeypatch):
     """Redirect the cache DB to a tmp path so tests don't touch ~/.cache."""
     db_path = tmp_path / "brew-hop-search.db"
     monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(db_path))
+    # Trust enrichment shells out to `brew tap-info` (~2s); these tests are
+    # about the .rb scan + DB round-trip. tests/test_tap_trust.py covers it.
+    monkeypatch.setattr("brew_hop_search.sources.taps.fetch_tap_meta", lambda: {})
     return db_path
 
 
