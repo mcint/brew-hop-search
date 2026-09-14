@@ -20,6 +20,12 @@ import sqlite_utils
 
 CACHE_DIR = Path.home() / ".cache" / "brew-hop-search"
 DB_PATH = CACHE_DIR / "brew-hop-search.db"
+
+# On-disk schema version (docs/specs/SCHEMA.md). Bump when a table or column
+# changes shape in a way a *reader other than this package* would notice —
+# the brew-hop-api read model pins this number, not our package version.
+# Written to `_meta` (kind "schema_version", value column) on every import.
+SCHEMA_VERSION = 1
 REFRESH_LOG = CACHE_DIR / "refresh.log"
 _REFRESH_LOG_MAX = 1 * 1024 * 1024  # 1 MB before rotation
 
@@ -171,6 +177,32 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         pk="kind",
         replace=True,
     )
+    stamp_schema_version(db)
+
+
+def stamp_schema_version(db: sqlite_utils.Database) -> None:
+    """Record SCHEMA_VERSION in `_meta` so external readers can check compat.
+
+    Idempotent; `alter=True` adds the `value` column to pre-0.4 databases.
+    """
+    try:
+        db["_meta"].insert(
+            {"kind": "schema_version", "updated_at": time.time(), "count": 0,
+             "value": str(SCHEMA_VERSION)},
+            pk="kind", replace=True, alter=True,
+        )
+    except Exception:
+        pass  # never fail an import over a bookkeeping row
+
+
+def read_schema_version(db: sqlite_utils.Database) -> int | None:
+    """Schema version stamped in `_meta`, or None (pre-0.4 DB: assume 1)."""
+    if "_meta" not in db.table_names():
+        return None
+    try:
+        return int(db["_meta"].get("schema_version")["value"])
+    except Exception:
+        return None
 
 
 def mark_updated(db: sqlite_utils.Database, kind: str, count: int) -> None:
