@@ -25,7 +25,11 @@ This isn't a flag — it's the default behavior for **search**, **`-i`**,
 - `--refresh=KIND[,KIND...]` — refresh a subset only; KIND ∈
   `{index, installed, outdated, taps, local, all}` (see `--refresh` below)
 - `--stale DUR` — override the threshold beyond which a cache is
-  considered stale enough to background-refresh
+  considered stale enough to background-refresh, for every source the
+  invocation touches
+- `--stale KIND:DUR[,KIND:DUR]` — same, per source; KIND ∈
+  `{index, installed, taps, local, all}` (short `x i t l`, matching
+  `--refresh`). `outdated` is not a stale kind — set `index`/`installed`.
 - `-l` / `--local` — *no* network, no background refresh; pure cache
 - `--offline` — adverb form of the same promise for *any* source: no
   network, no `brew` subprocess, no bg refresh; missing cache is an

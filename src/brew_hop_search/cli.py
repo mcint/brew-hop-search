@@ -127,6 +127,69 @@ def parse_refresh(s: str):
         )
 
 
+# ── --stale value parsing ────────────────────────────────────────────────────
+
+STALE_KINDS = frozenset({"index", "installed", "taps", "local"})
+
+
+def parse_stale(s: str):
+    """Accept a duration ('1h') or a selector ('installed:5m,taps:10m').
+
+    Returns:
+      - int seconds              for the bare-duration form (applies to every
+                                 source the invocation touches)
+      - dict[str, int]           for the KIND:DUR selector form; `all:DUR`
+                                 expands to every kind
+
+    Short kinds mirror --refresh (x i t l). `outdated` is not a stale kind —
+    it's derived from index+installed; set those instead.
+    """
+    s = (s or "").strip()
+    if not s:
+        raise argparse.ArgumentTypeError("--stale: empty value")
+    if ":" not in s:
+        try:
+            return _parse_duration_seconds(s)
+        except (ValueError, TypeError):
+            raise argparse.ArgumentTypeError(
+                f"--stale: not a duration or KIND:DUR list: {s!r}  "
+                f"(durations: 30m, 6h, 1d; kinds: {', '.join(sorted(STALE_KINDS))}, all)"
+            )
+    out: dict[str, int] = {}
+    for tok in s.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        kind, _, dur = tok.partition(":")
+        kind = _REFRESH_SHORT.get(kind.strip().lower(), kind.strip().lower())
+        if kind == "all":
+            kinds = sorted(STALE_KINDS)
+        elif kind in STALE_KINDS:
+            kinds = [kind]
+        else:
+            raise argparse.ArgumentTypeError(
+                f"--stale: unknown kind: {kind!r}  "
+                f"(known: {', '.join(sorted(STALE_KINDS))}, all)"
+            )
+        try:
+            secs = _parse_duration_seconds(dur)
+        except (ValueError, TypeError):
+            raise argparse.ArgumentTypeError(
+                f"--stale: bad duration for {kind}: {dur!r}  (examples: 30m, 6h, 1d)"
+            )
+        for k in kinds:
+            out[k] = secs
+    return out
+
+
+def stale_for(args, kind: str) -> int | None:
+    """Per-source stale threshold from --stale, or None for the source default."""
+    s = getattr(args, "stale", None)
+    if isinstance(s, dict):
+        return s.get(kind)
+    return s  # int or None
+
+
 # ── standalone --refresh=KIND command ────────────────────────────────────────
 
 def _run_refresh_only(kinds: frozenset, verbose: int = 1) -> None:
@@ -485,10 +548,13 @@ def _main_inner(argv, _args_holder):
     cache.add_argument("--offline", action="store_true",
                        help="no network, no refresh: serve only what is cached "
                             "(conflicts with --refresh)")
-    cache.add_argument("--stale", nargs="?", type=parse_duration,
-                       const=stale_api_seconds(), default=None, metavar="DUR",
-                       help="background refresh threshold (default: 6h, "
-                            "$BREW_HOP_SEARCH_STALE_API to override)")
+    cache.add_argument("--stale", nargs="?", type=parse_stale,
+                       const=stale_api_seconds(), default=None,
+                       metavar="DUR|KIND:DUR[,...]",
+                       help="background-refresh threshold: =DUR for every "
+                            "source touched, =KIND:DUR per source (kinds: "
+                            "index,installed,taps,local,all; defaults 6h/1h/1h/1h, "
+                            "$BREW_HOP_SEARCH_STALE_* to override)")
 
     # ── output ──
     fmt = ap.add_argument_group("output")
@@ -679,12 +745,13 @@ def _main_inner(argv, _args_holder):
         # Cache-first: -O reads from existing tables and bg-refreshes any stale
         # dependencies. -l / --offline skip network. --refresh promotes to sync.
         if not args.local and not args.offline:
-            o_stale_api = args.stale if args.stale is not None else stale_api_seconds()
+            o_stale_api = stale_for(args, "index")
             for k, url in [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]:
                 api.ensure_cache(k, url, force=force_refresh_for(args, "index"),
                                  stale=o_stale_api,
                                  fresh=conditional_refresh_secs(args))
-            installed.ensure_cache(force=force_refresh_for(args, "installed"))
+            installed.ensure_cache(force=force_refresh_for(args, "installed"),
+                                   stale=stale_for(args, "installed"))
 
         if args.brew_verify:
             fast_data = collect_outdated_fast()
@@ -750,7 +817,7 @@ def _main_inner(argv, _args_holder):
     if limit == 0:
         limit = 999999  # 0 = all
 
-    stale = args.stale if args.stale is not None else stale_api_seconds()
+    stale = stale_for(args, "index")  # None → api default (6h)
     fresh = conditional_refresh_secs(args)
 
     def _force(kind: str) -> bool:
@@ -808,7 +875,8 @@ def _main_inner(argv, _args_holder):
     if args.installed:
         inst_tables = (["installed_formula"] if want_formula else []) + \
                       (["installed_cask"] if want_cask else [])
-        _prepare(lambda: installed.ensure_cache(force=_force("installed")),
+        _prepare(lambda: installed.ensure_cache(force=_force("installed"),
+                                                stale=stale_for(args, "installed")),
                  *inst_tables)
         if want_formula:
             search_sources.append(("installed_formula", "installed formulae", "name"))
@@ -818,14 +886,16 @@ def _main_inner(argv, _args_holder):
     if args.local:
         loc_tables = (["local_formula"] if want_formula else []) + \
                      (["local_cask"] if want_cask else [])
-        _prepare(lambda: local.ensure_cache(force=_force("local")), *loc_tables)
+        _prepare(lambda: local.ensure_cache(force=_force("local"),
+                                            stale=stale_for(args, "local")), *loc_tables)
         if want_formula:
             search_sources.append(("local_formula", "local formulae", "name"))
         if want_cask:
             search_sources.append(("local_cask", "local casks", "token"))
 
     if args.taps:
-        _prepare(lambda: taps.ensure_cache(force=_force("taps")), "tap")
+        _prepare(lambda: taps.ensure_cache(force=_force("taps"),
+                                           stale=stale_for(args, "taps")), "tap")
         search_sources.append(("tap", "taps", "slug"))
 
     # Default: remote API (only if no source flags set)

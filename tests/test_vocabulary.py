@@ -185,3 +185,73 @@ def test_offline_outdated_skips_ensure_cache(monkeypatch, tmp_path):
 def test_help_lists_offline():
     out, _, _ = _run("--help")
     assert "--offline" in out
+
+
+# ── --stale universalized ──────────────────────────────────────────────────
+
+def test_parse_stale_forms():
+    from brew_hop_search.cli import parse_stale
+    assert parse_stale("1h") == 3600
+    assert parse_stale("installed:5m") == {"installed": 300}
+    assert parse_stale("i:5m,t:10m") == {"installed": 300, "taps": 600}
+    assert parse_stale("x:1h") == {"index": 3600}
+    assert parse_stale("all:2m") == {"index": 120, "installed": 120,
+                                     "taps": 120, "local": 120}
+
+
+@pytest.mark.parametrize("bad", ["bogus:1h", "installed:zzz", "installed:", ":5m", "outdated:1h"])
+def test_parse_stale_rejects(bad):
+    import argparse
+    from brew_hop_search.cli import parse_stale
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_stale(bad)
+
+
+def test_no_stale_flag_leaves_source_defaults(monkeypatch, tmp_path):
+    calls, _ = _main(monkeypatch, tmp_path, ["-itl", "foo"])
+    assert calls["installed"][0]["stale"] is None
+    assert calls["taps"][0]["stale"] is None
+    assert calls["local"][0]["stale"] is None
+
+
+def test_bare_stale_duration_applies_to_every_touched_source(monkeypatch, tmp_path):
+    calls, _ = _main(monkeypatch, tmp_path, ["--stale", "1h", "-itl", "foo"])
+    assert calls["installed"][0]["stale"] == 3600
+    assert calls["taps"][0]["stale"] == 3600
+    assert calls["local"][0]["stale"] == 3600
+
+
+def test_stale_selector_targets_one_source(monkeypatch, tmp_path):
+    calls, _ = _main(monkeypatch, tmp_path, ["--stale=installed:5m", "-it", "foo"])
+    assert calls["installed"][0]["stale"] == 300
+    assert calls["taps"][0]["stale"] is None
+
+
+def test_stale_selector_index_reaches_api(monkeypatch, tmp_path):
+    calls, _ = _main(monkeypatch, tmp_path, ["--stale=x:1h", "foo"])
+    assert calls["api_formula"][0]["stale"] == 3600
+    assert calls["api_cask"][0]["stale"] == 3600
+
+
+def test_stale_selector_multi(monkeypatch, tmp_path):
+    calls, _ = _main(monkeypatch, tmp_path, ["--stale=i:5m,l:10m", "-itl", "foo"])
+    assert calls["installed"][0]["stale"] == 300
+    assert calls["local"][0]["stale"] == 600
+    assert calls["taps"][0]["stale"] is None
+
+
+def test_stale_reaches_outdated_installed(monkeypatch, tmp_path):
+    monkeypatch.setattr("brew_hop_search.outdated.collect_outdated",
+                        lambda *a, **kw: {"formulae": [], "casks": []})
+    monkeypatch.setattr("brew_hop_search.outdated.display_outdated",
+                        lambda *a, **kw: None)
+    calls, code = _main(monkeypatch, tmp_path, ["-O", "--stale=installed:5m"])
+    assert code == 0
+    assert calls["installed"][0]["stale"] == 300
+    assert calls["api_formula"][0]["stale"] is None or calls["api_formula"][0]["stale"] > 300
+
+
+def test_stale_bad_kind_is_a_usage_error(monkeypatch, tmp_path, capsys):
+    _, code = _main(monkeypatch, tmp_path, ["--stale=bogus:1h", "foo"])
+    assert code == 2
+    assert "unknown kind" in capsys.readouterr().err

@@ -57,7 +57,8 @@ whether more results exist. Section header shows `shown/total`.
 | *(default)* | Use cache if present; background refresh if older than `--stale` threshold |
 | `--refresh` | Force immediate synchronous re-fetch |
 | `--refresh=DUR` | Synchronous refresh only if cache older than DUR |
-| `--stale DUR` | Background refresh threshold (default: 6h) |
+| `--stale DUR` | Background refresh threshold for every source touched (defaults: index 6h, installed/taps/local 1h) |
+| `--stale KIND:DUR[,KIND:DUR]` | Per-source threshold; kinds `index installed taps local all`, short `x i t l` |
 | `--offline` | No network, no refresh, no subprocess; every selected source must already be cached (else exit 1). Conflicts with `--refresh`. |
 
 Background refresh spawns a detached subprocess that updates the

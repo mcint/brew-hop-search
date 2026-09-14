@@ -107,9 +107,14 @@ controls how much context is shown (see `docs/specs/OUTPUT.md` for full spec).
   brew's on-disk API cache as a source), `--offline` is an adverb that
   composes with any source.
 
-* `--stale`[`=`*DUR*]:
-  Background refresh threshold (default: 6h). Triggers a detached
-  subprocess to update the cache without blocking the current search.
+* `--stale`[`=`*DUR*|*KIND*`:`*DUR*[`,`...]]:
+  Background-refresh threshold. `--stale=1h` applies to every source the
+  invocation touches; `--stale=installed:5m,taps:10m` sets one source at a
+  time (kinds: `index`, `installed`, `taps`, `local`, `all`; short forms
+  `x i t l`). Defaults: 6h for the API index, 1h for the rest
+  (`$BREW_HOP_SEARCH_STALE_API` / `_INSTALLED` / `_TAPS` / `_LOCAL`).
+  A stale source is refreshed by a detached subprocess without blocking
+  the current search.
 
 ## INFO
 
