@@ -7,6 +7,43 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [Unreleased] — 0.4.0-dev
+
+Vocabulary release: the cli-vocabulary draft's Option A lands, plus the
+first brew-7.0-aware plumbing. Minor bump because `-L` is renamed
+(alias kept for one release) and three new flags widen the surface.
+
+### Highlights
+
+- **`-L` → `-l`.** Lowercase = source, matching `-i` / `-t`. `-L`
+  still works this release, hidden from help, with a stderr hint.
+- **`--offline`** adverb: no network, no `brew` subprocess, no
+  background refresh, for any source. Missing cache is an error, not a
+  fetch. Conflicts with `--refresh`.
+- **`--stale` for every source.** `--stale 1h` applies to whatever the
+  invocation touches; `--stale=installed:5m,taps:10m` sets one source
+  at a time (kinds `index installed taps local all`, short `x i t l`).
+- **`--cached`** aggregate: installed + taps + local in one flag
+  (`= -itl`), never the network index. From the locations draft.
+- **Brew-version gate** (`brewver.py`). Detects `brew --version`,
+  caches it in `_meta` (6h), gates features by minimum version, and
+  reports what it skipped. `-C` shows the brew version; `-C -v` lists
+  each gated feature; `-C --json` carries a `brew` block.
+  `$BREW_HOP_SEARCH_BREW_VERSION` overrides for tests.
+
+### Build / tests
+
+- `.python-version` pins 3.12: a fresh venv picked 3.14, whose argparse
+  renders help differently and broke every snapshot on a clean checkout.
+- The no-git/no-build-info version test is hermetic now (it leaked the
+  generated `_build_info.py` through a `from`-import).
+
+### Docs
+
+- `docs/research/2026-09-13-brew-7-features.md`: what brew 6.0 → 7.0.0
+  changed for an indexer (tap trust, `brew vulns`, `doctor --json`,
+  `advisories.json`), with minimum versions.
+
 ## [0.3.7] — 2026-05-28
 
 A user-facing capability release: real query syntax, offline-first

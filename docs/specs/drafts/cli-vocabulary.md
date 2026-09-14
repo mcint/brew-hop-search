@@ -7,7 +7,12 @@ clarity, vs. add subcommands for verb-first scoping.
 
 ## Status
 
-**Draft** — bead bhs-3g9. Drives changes referenced by
+**Draft; Option A shipped 2026-09-13** (0.4.0-dev): `-L` → `-l` with a
+one-release hidden alias, `--offline` adverb (conflicts with
+`--refresh`), and `--stale` honored by every source with the
+`KIND:DUR[,…]` selector. Option B (subcommands) is next; see
+`sessions/2026-09-13-requests.md` § C1 for the proposed staging
+(draft verbs behind `BREW_HOP_SEARCH_DRAFT=1`). Bead bhs-3g9. Drives changes referenced by
 [timing](timing.md), [installed-indicator](installed-indicator.md),
 and the next steps for `--stale` universalization. Pulls from the
 cross-project seed
