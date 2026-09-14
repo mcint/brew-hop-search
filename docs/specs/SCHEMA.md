@@ -23,6 +23,14 @@ CREATE TABLE [_meta] (
 Known `kind` values: `formula`, `cask`, `installed_formula`, `installed_cask`,
 `tap`, `local_formula`, `local_cask`, `version_check`, `brew_version`.
 
+`schema_version` is a scalar row stamped on every import (`value` = the
+`SCHEMA_VERSION` constant in `cache.py`, currently `1`). External readers —
+the brew-hop-api read model in the ClaudeCollab seedbed — pin *this*
+number, not the package version: the package can move 0.4 → 0.5 without
+the on-disk shape changing, and vice versa. Bump it when a table or column
+changes in a way another reader would notice; note the change here under
+"Schema Evolution Rules". A DB without the row is pre-0.4 → treat as 1.
+
 `brew_version` is a scalar row: `value` holds the detected `brew --version`
 (e.g. `7.0.1`), `count` is 0, `updated_at` drives a 6h TTL. The `value`
 column is added on first write (`alter=True`), so older databases upgrade
