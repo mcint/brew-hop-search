@@ -33,8 +33,11 @@ cache:
                         an alias
   --offline             no network, no refresh: serve only what is cached
                         (conflicts with --refresh)
-  --stale [DUR]         background refresh threshold (default: 6h,
-                        $BREW_HOP_SEARCH_STALE_API to override)
+  --stale [DUR|KIND:DUR[,...]]
+                        background-refresh threshold: =DUR for every source
+                        touched, =KIND:DUR per source (kinds:
+                        index,installed,taps,local,all; defaults 6h/1h/1h/1h,
+                        $BREW_HOP_SEARCH_STALE_* to override)
 
 output:
   -g, --grep            tab-separated for piping
