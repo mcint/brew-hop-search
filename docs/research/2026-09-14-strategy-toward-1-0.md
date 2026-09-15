@@ -87,6 +87,15 @@ Option B from `cli-vocabulary.md`, refined by two constraints you named:
 it shouldn't spoil the fast path (`bhs python`), and an implicit default
 verb à la `llm prompt` is acceptable only if it can be switched off.
 
+**Name (decided 2026-09-14).** The project becomes **`brew-hop`**:
+`brew hop search python` via Homebrew's external-command dispatch,
+`brew-hop`/`bhs` on PATH, `search` the optional-implicit default verb,
+and the API a verb (`brew hop api serve`) once it graduates from the
+seedbed. Until `hop-api` is ready to merge, the package, binary, tap
+formula, and PyPI name stay `brew-hop-search`; the rename ships with the
+subcommand layer (0.5) so users learn one new shape, not two. `bhs`
+survives as the short alias either way.
+
 **Grammar.** `bhs [global adverbs] <verb> [verb args]`. Verbs: `search`
 (default), `installed`, `taps`, `local`, `cached`, `outdated`, `history`,
 `status`, `refresh`, `version`, and later `doctor`, `bundle`, `vulns`,
