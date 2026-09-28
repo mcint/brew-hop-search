@@ -172,6 +172,9 @@ bhs search --stale 1h python
 bhs refresh installed --max-age 6h
 ```
 
+First verb, spec'd: [peek](peek.md) — lands the thin verb dispatch
+without touching the flag surface (2026-09-28, bhs-u7e).
+
 Pros: makes verbs explicit. Better `--help` organization (per-verb
 help screens). Matches `gh`, `git`, `kubectl` conventions. Scales
 when the next verb arrives (e.g. `bhs install` if we ever cross into
