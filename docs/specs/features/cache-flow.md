@@ -159,6 +159,32 @@ and the held-open terminal felt like a hang — defeating the
 "results-first" promise. The grace window keeps the fast-path UX
 (inline ✓ when the bg finishes quickly) without the worst-case hold.
 
+### Reminder line
+
+Every search, `-i` and `-O` ends with one stderr comment describing the
+caches it was just served from, and how to refresh them:
+
+```
+  # [cache] index 2h old, 4h left  [--refresh]
+  # [cache] installed 12m old, 48m left, changed · taps <1m old, 59m left  [--refresh]
+  # [cache] local 1d1h old, stale  [--refresh]
+```
+
+One clause per *source* (formula+cask collapse to `index`; `installed_*`
+to `installed`; `local_*` to `local`; `tap` to `taps`): age, then time
+until the TTL calls it stale (`stale` once it has), then `changed` when a
+witness mtime says brew touched the source since we indexed. The
+`[--refresh]` tail is the whole reason the line exists — nobody should
+have to remember the flag. Sources with no cache are omitted.
+
+Policy: default level prints it only when stderr is a TTY; `-v` and up
+always; `-q` never. Format flags (`--json`, `--csv`, …) never print it;
+`--json` carries the same facts as `meta.cache` (see ENVELOPE.md).
+
+It precedes the trailing `# [cache] updating …` line when a bg refresh is
+in flight: the reminder says what you got, the trailing line says what is
+happening about it.
+
 ### Differs/matches detection
 
 The "matches cache" / "may differ" determination compares the **set of

@@ -135,6 +135,39 @@ def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 2.0,
     status_line(dim(f"  # [cache] {' · '.join(parts)}"), done=True)
 
 
+def render_cache_line(entries: list[dict]) -> str:
+    """`# [cache] index 2h old, 4h left · installed 12m old, 48m left, changed  [--refresh]`
+
+    One clause per source the command just served from: how old the cache
+    is, how long until its TTL makes it stale (or `stale`), and `changed`
+    when a witness mtime says brew touched the source since we indexed.
+    Always ends with the `[--refresh]` reminder — the line exists so the
+    user never has to remember the flag. Uncolored; the caller dims it.
+    """
+    if not entries:
+        return ""
+    clauses = []
+    for e in entries:
+        age = int(e["age"])
+        left = int(e["ttl"]) - age
+        bits = [f"{e['label']} {fmt_duration(age)} old"]
+        bits.append(f"{fmt_duration(left, sub_minute=True)} left" if left > 0 else "stale")
+        if e.get("changed"):
+            bits.append("changed")
+        clauses.append(", ".join(bits))
+    return f"# [cache] {' · '.join(clauses)}  [--refresh]"
+
+
+def should_emit_cache_line(verbose: int, tty: bool | None = None) -> bool:
+    """-q: never. -v and up: always. Default: only when stderr is a TTY
+    (pipelines and scripts see results only)."""
+    if verbose <= 0:
+        return False
+    if verbose >= 2:
+        return True
+    return USE_COLOR_STDERR if tty is None else tty
+
+
 def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,
                extra: str = "") -> str:
     """Compact one-line format: name  ver  desc  │ url."""
@@ -384,9 +417,25 @@ def _envelope(command: str, results, **meta_fields) -> dict:
     return out
 
 
+def cache_meta(entries: list[dict]) -> dict | None:
+    """The reminder line's facts, shaped for `meta.cache` in the envelope."""
+    if not entries:
+        return None
+    out = {}
+    for e in entries:
+        age = int(e["age"])
+        out[e["label"]] = {
+            "age_s": age,
+            "ttl_s": int(e["ttl"]),
+            "stale": age >= int(e["ttl"]),
+            "changed": bool(e.get("changed")),
+        }
+    return out
+
+
 def output_json(all_results: list[tuple], *,
                 query: str = "", limit: int = 20, offset: int = 0,
-                mode: str = "full") -> None:
+                mode: str = "full", cache: list[dict] | None = None) -> None:
     count = 0
     sources = []
     total = 0
@@ -412,6 +461,7 @@ def output_json(all_results: list[tuple], *,
         offset=offset if offset else None,
         total=total if total else None,
         count=count,
+        cache=cache_meta(cache or []),
     )
     print(json.dumps(env, indent=2))
 

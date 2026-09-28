@@ -12,7 +12,13 @@ with smart background caching.
 
 On first run, fetches indexes from `formulae.brew.sh` into a local SQLite
 database. Subsequent searches are instant. Stale caches refresh in the
-background.
+background. A source is stale when its TTL expires or when a *witness*
+directory brew touches on install/upgrade/remove/tap/update (`opt/`,
+`Caskroom/`, `Library/Taps`, brew's `api/` cache) has a newer mtime than
+the index — a few `stat` calls, no `brew` subprocess. Every search ends
+with a stderr reminder, `# [cache] index 2h old, 4h left  [--refresh]`
+(TTY by default, always at `-v`, never at `-q`), adding `changed` when a
+witness moved.
 
 Default searches never call `brew` — only HTTP or local DB reads.
 

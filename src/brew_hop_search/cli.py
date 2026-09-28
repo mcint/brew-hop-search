@@ -258,6 +258,48 @@ def _ttl_for(kind: str) -> tuple[int, str, str]:
     return val, src, env_name
 
 
+_SOURCE_LABEL = {
+    "formula": "index", "cask": "index",
+    "installed_formula": "installed", "installed_cask": "installed",
+    "tap": "taps",
+    "local_formula": "local", "local_cask": "local",
+}
+
+
+def cache_entries(db, kinds: list[str]) -> list[dict]:
+    """Collapse the tables a command touched into per-source reminder facts.
+
+    formula+cask are one fetch → one `index` clause (youngest age wins);
+    likewise installed_* and local_*. Tables with no cache are skipped —
+    there is nothing to be reminded about. Order follows first appearance.
+    """
+    from brew_hop_search import witness
+    out: dict[str, dict] = {}
+    for kind in kinds:
+        label = _SOURCE_LABEL.get(kind)
+        if label is None or not table_exists(db, kind):
+            continue
+        age = table_age(db, kind)
+        if age == float("inf"):
+            continue
+        ttl, _, _ = _ttl_for(kind)
+        changed = witness.changed(db, kind)
+        e = out.get(label)
+        if e is None:
+            out[label] = {"label": label, "age": age, "ttl": ttl, "changed": changed}
+        else:
+            e["age"] = min(e["age"], age)
+            e["changed"] = e["changed"] or changed
+    return list(out.values())
+
+
+def _emit_cache_line(entries: list[dict], verbose: int) -> None:
+    from brew_hop_search.display import render_cache_line, should_emit_cache_line
+    if not entries or not should_emit_cache_line(verbose):
+        return
+    print(dim(f"  {render_cache_line(entries)}"), file=sys.stderr)
+
+
 def _show_brew_version(verbose: int, force: bool = False) -> None:
     """`brew  7.0.1` line; at -v, one line per version-gated feature."""
     from brew_hop_search import brewver
@@ -777,6 +819,10 @@ def _main_inner(argv, _args_holder):
         sys.stdout.flush()
         if not args.quiet and not args.json and fmt is None:
             from brew_hop_search.display import trailing_refresh_status
+            _emit_cache_line(cache_entries(get_db(), ["formula", "cask",
+                                                      "installed_formula",
+                                                      "installed_cask"]),
+                             o_verbose)
             trailing_refresh_status(verbose=o_verbose)
         return
 
@@ -942,10 +988,14 @@ def _main_inner(argv, _args_holder):
         total_matched += source_count if truncated else len(results)
         all_results.append((kind, results, age, source_count))
 
+    # Reminder facts for every source we just served from (stderr line /
+    # meta.cache). Computed once; cheap (a few stats, no subprocess).
+    cache_facts = cache_entries(db, [k for k, _, _ in search_sources])
+
     # ── output ──
     if args.json:
         output_json(all_results, query=query, limit=limit, offset=offset,
-                    mode=args.json)
+                    mode=args.json, cache=cache_facts)
         return
     if args.csv:
         output_csv(all_results)
@@ -1021,9 +1071,10 @@ def _main_inner(argv, _args_holder):
         for line in brewver.skipped_report():
             print(dim(f"  # [brew] {line}"), file=sys.stderr)
 
-    # Trailing status: hold the terminal until any in-flight bg refreshes
-    # complete (or ^C). TTY-only — pipelines exit immediately.
+    # Reminder line (what you were just served, and how to refresh it), then
+    # the trailing status for any bg refresh in flight. Both stderr.
     sys.stdout.flush()
+    _emit_cache_line(cache_facts, verbose)
     if not quiet:
         from brew_hop_search.display import trailing_refresh_status
         trailing_refresh_status(verbose=verbose)
