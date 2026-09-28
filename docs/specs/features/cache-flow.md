@@ -316,6 +316,22 @@ At `-vv`, add the next-refresh ETA:
   formula  8306  1h12m ago  ttl 6h (default)  fresh for 4h47m  fts  30MB json
 ```
 
+Witness state (§ Witness mtimes) rides the same row for the offline
+sources. Default flags only a moved witness; `-v` always names the
+state; `-vv` lists the witness paths once per kind (first three, then
+`(+N more)`):
+
+```
+  installed:f  460  1h11m ago  ttl 1h  changed                    # default
+  installed:f  460  1h11m ago  ttl 1h (default)  witness changed  # -v
+  taps         912  3m ago     ttl 1h (default)  witness ok
+  local:f      130  2d ago     ttl 1h (default)  witness none     # pre-schema-2 stamp
+      witness: /opt/homebrew/opt, /opt/homebrew/Cellar, /opt/homebrew/Caskroom
+```
+
+`-C --json` adds `"witness": {stored, current, changed, paths}` to each
+offline source; the remote index has no key.
+
 ## Examples
 
 ```sh

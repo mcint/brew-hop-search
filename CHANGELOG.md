@@ -35,6 +35,25 @@ first brew-7.0-aware plumbing. Minor bump because `-L` is renamed
   `-t -v` shows `official`, `trusted`, or `untrusted`. First real
   consumer of the version gate: older brews skip it and report the
   skip at `-v`.
+- **Witness mtimes: brew changed something → refresh, without asking
+  brew.** Each offline source names directories brew touches when it
+  mutates that source (`opt/`, `Cellar/`, `Caskroom/` for installed;
+  `Library/Taps` and each tap's `.git/FETCH_HEAD` for taps; brew's
+  `api/` cache for local). Their max mtime is stamped at index time
+  (`_meta.witness`, schema 2) and re-stat'd on every read — a few dozen
+  `stat` calls, no subprocess. A moved witness counts as stale exactly
+  like an expired TTL and takes the same non-blocking path. `-C` flags
+  `changed`; `-C -v` names the state; `-C -vv` lists the paths.
+- **Every offline source refreshes in the background.** `taps` and
+  `local` used to block the foreground when stale; now `installed`,
+  `taps` and `local` share one detached runner (`sources/_bg.py`) with
+  the sentinel + `refresh.log` contract the trailing line already
+  polls.
+- **`# [cache] … [--refresh]` reminder line.** Every search, `-i` and
+  `-O` ends with one stderr comment per source it served from: age,
+  time until stale (or `stale`), `changed` when a witness moved, and
+  the `[--refresh]` reminder. TTY by default, always at `-v`, never at
+  `-q`; `--json` carries the same facts as `meta.cache`.
 
 ### Build / tests
 

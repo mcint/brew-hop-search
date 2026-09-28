@@ -348,6 +348,8 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
         "local_cask": "local:c",
     }
 
+    from brew_hop_search import witness
+    shown_witness: set[str] = set()
     for kind, color_fn, check_fts in sources:
         if not table_exists(db, kind):
             continue
@@ -380,14 +382,29 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
             if jp.exists():
                 jp_mb = jp.stat().st_size / (1024 * 1024)
                 parts.append(dim(f"{jp_mb:.0f}MB json"))
+        # Witness state (cache-flow.md § Witness mtimes): default flags only
+        # a moved witness; -v names the state; -vv lists the paths once per
+        # witness kind.
+        ws = witness.state(db, kind)
+        if ws["kind"]:
+            if ws["changed"]:
+                parts.append(yellow("witness changed" if verbose >= 2 else "changed"))
+            elif verbose >= 2:
+                parts.append(dim("witness ok" if ws["stored"] is not None else "witness none"))
         print("  ".join(parts))
+        if verbose >= 3 and ws["kind"] and ws["kind"] not in shown_witness:
+            shown_witness.add(ws["kind"])
+            paths = ws["paths"]
+            shown = ", ".join(paths[:3])
+            more = f" (+{len(paths) - 3} more)" if len(paths) > 3 else ""
+            print(dim(f"      witness: {shown}{more}"))
 
 
 def show_cache_status_json() -> None:
     """Machine-readable cache status with meta envelope."""
     import json as json_mod
     from brew_hop_search.display import _envelope
-    from brew_hop_search import brewver
+    from brew_hop_search import brewver, witness
     db_exists = DB_PATH.exists()
     have = brewver.brew_version()
     info = {
@@ -422,6 +439,12 @@ def show_cache_status_json() -> None:
                     "ttl_source": src_layer,
                     "ttl_env_var": f"BREW_HOP_SEARCH_{env_name}" if env_name else None,
                 }
+                ws = witness.state(db, kind)
+                if ws["kind"]:
+                    info["sources"][kind]["witness"] = {
+                        "stored": ws["stored"], "current": ws["current"],
+                        "changed": ws["changed"], "paths": ws["paths"],
+                    }
                 source_count += 1
     env = _envelope("cache-status", info, count=source_count)
     print(json_mod.dumps(env, indent=2))
