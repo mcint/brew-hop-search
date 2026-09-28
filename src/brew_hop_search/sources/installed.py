@@ -5,17 +5,13 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
 
-from brew_hop_search.cache import (
-    get_db, import_to_db, table_age, table_exists,
-    sentinel_path, register_pending_refresh,
-)
+from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red, status_line
 
 from brew_hop_search.defaults import stale_installed_seconds
+from brew_hop_search import witness
 
 
 # `brew info --json=v2 --installed` can be slow on large brew installs.
@@ -44,6 +40,9 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
     if not silent:
         status_line(dim(f"  {prefix} querying brew \u2026"))
     try:
+        # Sample the witness *before* asking brew: anything brew changes
+        # while `brew info` runs (30s+ cold) must show as moved next read.
+        wit = witness.witness_mtime("installed")
         data = _brew_installed_json(timeout=timeout)
         db = get_db()
 
@@ -63,7 +62,7 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
         ]
         import_to_db(db, "installed_formula", formula_rows,
                       list(formula_rows[0].keys()) if formula_rows else [],
-                      "name", ["name", "desc"])
+                      "name", ["name", "desc"], witness=wit)
 
         # Casks
         casks = data.get("casks", [])
@@ -82,7 +81,7 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
         ]
         import_to_db(db, "installed_cask", cask_rows,
                       list(cask_rows[0].keys()) if cask_rows else [],
-                      "token", ["token", "name", "desc"])
+                      "token", ["token", "name", "desc"], witness=wit)
 
         # Record to install history log
         from brew_hop_search.history import record_installed
@@ -102,28 +101,17 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
 
 def background_refresh() -> None:
     """Spawn a detached subprocess to rerun `brew info`. Returns immediately."""
-    try:
-        spath = sentinel_path("installed", os.getpid())
-        try:
-            spath.unlink()
-        except FileNotFoundError:
-            pass
-        env = {**os.environ, "BHS_REFRESH_SENTINEL": str(spath)}
-        subprocess.Popen(
-            [sys.executable, "-m", "brew_hop_search._bg_installed"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            env=env,
-        )
-        register_pending_refresh("installed", spath)
-    except Exception:
-        pass
+    from brew_hop_search.sources import _bg
+    _bg.background_refresh("installed")
 
 
 def ensure_cache(force: bool = False, stale: int | None = None,
                  allow_bg: bool = True) -> bool:
     """Cache-first: serve from disk if it exists, refresh in background if stale.
+
+    Stale means the TTL expired *or* a witness moved (brew installed,
+    upgraded or removed something since we indexed — see witness.py).
+    Both take the same non-blocking path.
 
     Args:
       force:    Synchronous refresh regardless of age.
@@ -139,7 +127,7 @@ def ensure_cache(force: bool = False, stale: int | None = None,
     if force or not has_cache:
         return refresh()
     age = table_age(db, "installed_formula")
-    if age > stale:
+    if age > stale or witness.changed(db, "installed_formula"):
         if allow_bg:
             background_refresh()
         else:

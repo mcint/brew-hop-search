@@ -198,8 +198,46 @@ bg job finishes on its own.
 | State                        | -l / --offline | search default                        | --refresh             | --refresh=KIND        |
 |------------------------------|-----|---------------------------------------|-----------------------|-----------------------|
 | Fresh cache                  | use | use, no bg                            | sync refresh, then print | sync refresh selected; print |
-| Stale cache (age > stale)    | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
+| Stale cache (age > stale, **or witness moved**) | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
 | No cache                     | err | sync refresh, then print              | sync refresh, then print | sync refresh selected, then print |
+
+Every source takes the bg row: `index` (formulae.brew.sh), `installed`
+(`brew info`), `taps` (Library/Taps rescan) and `local` (brew's api/
+cache). The offline three share one detached runner
+(`sources/_bg.py`); `index` keeps its own because it carries a URL.
+
+## Witness mtimes
+
+A TTL guesses. Directory mtimes know. Each offline source names a few
+*witness paths* that brew touches whenever it mutates that source:
+
+| source    | witness paths                                              | moved by |
+|-----------|------------------------------------------------------------|----------|
+| installed | `<prefix>/opt`, `Cellar`, `Caskroom`                       | install, upgrade, remove (all relink under `opt/`); casks land in `Caskroom/` |
+| taps      | `Library/Taps`, each `<user>/<tap>` dir, its `.git/FETCH_HEAD` | `brew tap`, `untap` (parents); `brew update` (FETCH_HEAD) |
+| local     | `$(brew --cache)/api`, `api/formula`, `api/cask`           | brew writing per-formula JSON on `brew info`/`install` |
+| index     | none — remote                                              | TTL only |
+
+At index time the source samples the max mtime over its witnesses —
+*before* it reads anything, so a change that lands during a slow `brew
+info` shows up as moved on the next read — and stamps it into
+`_meta.witness` (schema 2). Every later read stats the same paths: a
+few dozen `stat` calls, no subprocess. Roots come from
+`HOMEBREW_PREFIX` / `HOMEBREW_REPOSITORY` / `HOMEBREW_CACHE` when set,
+else from where the `brew` binary lives — asking brew would cost more
+than the check saves.
+
+If the live max is newer than the stamp, the source is stale: it takes
+the **background** row of the matrix above, never the blocking one. TTL
+stays as the fallback for whatever a witness can't see (a hand-edited
+`.rb` inside an existing tap moves the file, not the tap dir).
+
+Unknown is not changed. A NULL stamp (pre-schema-2 DB, no discoverable
+roots) or a vanished witness reads as "no change", so an upgrade never
+thrashes; the first refresh after upgrading writes the stamp.
+
+`-C` shows the witness state per source; `-C -v` names the paths. The
+reminder line (next section) says `changed` when a witness moved.
 
 `--offline` + any `--refresh` form is rejected at parse time
 (`--offline and --refresh conflict. Drop one.`).
