@@ -179,14 +179,35 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         db[kind].insert_all(data, pk=pk)
         db[kind].enable_fts(fts_columns, tokenize="porter", create_triggers=True)
 
+    _ensure_witness_column(db)
     db["_meta"].insert(
         {"kind": kind, "updated_at": time.time(), "count": len(data),
          "witness": witness},
         pk="kind",
         replace=True,
-        alter=True,  # adds `witness` to pre-schema-2 databases
     )
     stamp_schema_version(db)
+
+
+def _ensure_witness_column(db: sqlite_utils.Database) -> None:
+    """Add `_meta.witness` as FLOAT, explicitly.
+
+    Letting `alter=True` add it would type it from the first value seen —
+    and the first import is the remote index, whose witness is None, so
+    the column came out TEXT. A float in a TEXT column round-trips through
+    15 significant digits; mtimes have 16. Equal stamps then compared
+    unequal and every read refreshed. Typed up front, no such thing.
+    """
+    if "_meta" not in db.table_names():
+        db["_meta"].create({"kind": str, "updated_at": float, "count": int,
+                            "value": str, "witness": float}, pk="kind")
+        return
+    cols = db["_meta"].columns_dict
+    if "witness" not in cols:
+        db["_meta"].add_column("witness", float)
+    elif cols["witness"] is not float:
+        # A schema-2-dev DB that got the TEXT column: retype in place.
+        db["_meta"].transform(types={"witness": float})
 
 
 def stamp_schema_version(db: sqlite_utils.Database) -> None:

@@ -157,7 +157,9 @@ def changed(db: sqlite_utils.Database, table: str) -> bool:
     current = witness_mtime(kind)
     if current is None:
         return False
-    return current > stored
+    # Millisecond resolution: brew never mutates twice within 1ms, and it
+    # shields the compare from any float→text→float drift in storage.
+    return current - stored > 1e-3
 
 
 def state(db: sqlite_utils.Database, table: str) -> dict:

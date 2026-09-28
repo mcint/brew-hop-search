@@ -158,3 +158,26 @@ def test_state_for_index_has_no_witness(isolated_db):
 def test_schema_version_bumped_for_witness_column():
     from brew_hop_search.cache import SCHEMA_VERSION
     assert SCHEMA_VERSION >= 2
+
+
+def test_witness_column_is_float_even_when_first_stamp_is_null(isolated_db):
+    """Regression: the first import is the remote index (witness None), and
+    sqlite_utils typed the column TEXT from that. A float stored in a TEXT
+    column round-trips through 15 significant digits — mtimes have 16 — so
+    equal mtimes read as changed and every read spuriously refreshed."""
+    from brew_hop_search import witness
+    from brew_hop_search.cache import get_db
+    _import("formula", None)                 # creates the column
+    mtime = 1759089123.456789                # 16 significant digits
+    db = _import("installed_formula", mtime)
+    assert db["_meta"].columns_dict["witness"] is float
+    assert witness.stored_witness(db, "installed_formula") == mtime
+
+
+def test_changed_ignores_sub_millisecond_drift(isolated_db, tmp_path, monkeypatch):
+    from brew_hop_search import witness
+    opt = tmp_path / "opt"
+    _touch(opt, 5_000.0)
+    monkeypatch.setattr(witness, "witness_paths", lambda kind: [opt])
+    db = _import("installed_formula", 5_000.0 - 0.0004)
+    assert witness.changed(db, "installed_formula") is False
