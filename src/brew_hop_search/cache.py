@@ -25,7 +25,9 @@ DB_PATH = CACHE_DIR / "brew-hop-search.db"
 # changes shape in a way a *reader other than this package* would notice —
 # the brew-hop-api read model pins this number, not our package version.
 # Written to `_meta` (kind "schema_version", value column) on every import.
-SCHEMA_VERSION = 1
+#   1  0.4.0-dev: initial stamp
+#   2  `_meta.witness` (FLOAT, nullable) — witness mtime at import (witness.py)
+SCHEMA_VERSION = 2
 REFRESH_LOG = CACHE_DIR / "refresh.log"
 _REFRESH_LOG_MAX = 1 * 1024 * 1024  # 1 MB before rotation
 
@@ -151,7 +153,8 @@ def save_raw_json(kind: str, data: list[dict]) -> None:
 
 
 def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
-                 columns: list[str], pk: str, fts_columns: list[str]) -> None:
+                 columns: list[str], pk: str, fts_columns: list[str],
+                 witness: float | None = None) -> None:
     """Import rows into the DB with FTS index.
 
     Args:
@@ -161,6 +164,10 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         columns: Column names to extract from each row dict.
         pk: Primary key column name.
         fts_columns: Columns to include in FTS5 index.
+        witness: Witness mtime sampled *before* the source was read (see
+            witness.py), or None for sources without one. Stamped into
+            `_meta.witness` so a later read can tell whether brew touched
+            the source since this import.
     """
     fts_name = f"{kind}_fts"
     if fts_name in db.table_names():
@@ -173,9 +180,11 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         db[kind].enable_fts(fts_columns, tokenize="porter", create_triggers=True)
 
     db["_meta"].insert(
-        {"kind": kind, "updated_at": time.time(), "count": len(data)},
+        {"kind": kind, "updated_at": time.time(), "count": len(data),
+         "witness": witness},
         pk="kind",
         replace=True,
+        alter=True,  # adds `witness` to pre-schema-2 databases
     )
     stamp_schema_version(db)
 

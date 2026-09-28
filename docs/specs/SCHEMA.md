@@ -1,6 +1,6 @@
 # Database Schema
 
-Schema version: **1** (brew-hop-search 0.3.0, 2026-04-09)
+Schema version: **2** (brew-hop-search 0.4.0-dev, 2026-09-28; v1 was 0.3.0, 2026-04-09)
 
 All tables live in a single SQLite database at
 `~/.cache/brew-hop-search/brew-hop-search.db`.
@@ -16,15 +16,25 @@ CREATE TABLE [_meta] (
    [kind] TEXT PRIMARY KEY,    -- source identifier (e.g. "formula", "installed_cask")
    [updated_at] FLOAT,        -- unix timestamp of last refresh
    [count] INTEGER,            -- entry count at last refresh
-   [value] TEXT                -- optional scalar payload (added lazily via alter)
+   [value] TEXT,               -- optional scalar payload (added lazily via alter)
+   [witness] FLOAT             -- schema 2: witness mtime at import (see below)
 );
 ```
+
+`witness` is the max mtime over the source's *witness paths* (directories
+brew touches when it mutates that source — `opt/`, `Cellar/`, `Caskroom/`
+for installed; `Library/Taps` and each tap's `.git/FETCH_HEAD` for taps;
+`$(brew --cache)/api/*` for local), sampled *before* the source was read.
+NULL for the remote index and for pre-schema-2 rows. A read that finds the
+live max newer than the stamp treats the source as stale (background
+refresh). See `features/cache-flow.md` § "Witness mtimes" and
+`src/brew_hop_search/witness.py`.
 
 Known `kind` values: `formula`, `cask`, `installed_formula`, `installed_cask`,
 `tap`, `local_formula`, `local_cask`, `version_check`, `brew_version`.
 
 `schema_version` is a scalar row stamped on every import (`value` = the
-`SCHEMA_VERSION` constant in `cache.py`, currently `1`). External readers —
+`SCHEMA_VERSION` constant in `cache.py`, currently `2`). External readers —
 the brew-hop-api read model in the ClaudeCollab seedbed — pin *this*
 number, not the package version: the package can move 0.4 → 0.5 without
 the on-disk shape changing, and vice versa. Bump it when a table or column
@@ -158,6 +168,13 @@ Auto-update triggers keep FTS in sync between refreshes.
    If we need a field we didn't extract, it's in `raw`.
 5. **Missing columns are OK** — display code uses `.get()` with defaults.
    An older database missing `added_at` on `tap` will simply not show dates.
+
+### Version log
+
+| ver | package   | date       | change |
+|-----|-----------|------------|--------|
+| 1   | 0.3.0     | 2026-04-09 | initial stamp |
+| 2   | 0.4.0-dev | 2026-09-28 | `_meta.witness` (nullable FLOAT, added via `alter=True`; a v1 DB upgrades in place on its next import) |
 
 ## Cache Files
 
