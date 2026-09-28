@@ -185,6 +185,24 @@ It precedes the trailing `# [cache] updating …` line when a bg refresh is
 in flight: the reminder says what you got, the trailing line says what is
 happening about it.
 
+#### Duration style (experimental)
+
+`BREW_HOP_SEARCH_DURATION=clock` swaps the word form for a signed clock,
+in the reminder line and the `-C` age / fresh-for columns:
+
+```
+  # [cache] index -0:40:12 +5:19:48 · installed -0:46:10 +0:13:50 changed  [--refresh]
+  # [cache] local -1d 01:00 stale  [--refresh]
+```
+
+`-` is age, `+` is time until stale; the signs carry the meaning, so
+the commas go. Tiers follow what the eye needs at each range: under a
+day `h:mm:ss` (exact, no unit letters to parse); one to seven days
+`3d 14:05` (morning-vs-evening still matters); then `2w3d`, `3M`
+(30-day months), `1y1M`. Default stays `compact` (`40m old, 5h19m
+left`). A trial: if it earns its keep it graduates to config
+(`[display] duration = "clock"`) and a flag; if not, it goes.
+
 ### Differs/matches detection
 
 The "matches cache" / "may differ" determination compares the **set of

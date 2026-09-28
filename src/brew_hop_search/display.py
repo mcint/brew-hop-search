@@ -33,6 +33,56 @@ def fmt_duration(seconds: float, sub_minute: bool = False) -> str:
     d, h = divmod(h, 24)
     return f"{d}d{h}h" if h else f"{d}d"
 
+def fmt_clock(seconds: float) -> str:
+    """Experimental clock style. Tiers chosen for what the eye needs:
+
+      < 1d    h:mm:ss      0:40:12   exact, no unit letters to read
+      1–7d    Nd hh:mm     3d 14:05  morning-vs-evening still matters
+      1–8w    Nw[Nd]       2w3d
+      ≥ 60d   NM (30d)     3M
+      ≥ 365d  Ny[NM]       1y1M
+    """
+    if seconds == float("inf"):
+        return "never"
+    s = int(seconds)
+    if s < 86400:
+        h, rem = divmod(s, 3600)
+        m, sec = divmod(rem, 60)
+        return f"{h}:{m:02d}:{sec:02d}"
+    d, rem = divmod(s, 86400)
+    if d < 7:
+        h, rem = divmod(rem, 3600)
+        return f"{d}d {h:02d}:{rem // 60:02d}"
+    if d < 60:
+        w, dd = divmod(d, 7)
+        return f"{w}w{dd}d" if dd else f"{w}w"
+    if d < 365:
+        return f"{d // 30}M"
+    y, dd = divmod(d, 365)
+    mo = dd // 30
+    return f"{y}y{mo}M" if mo else f"{y}y"
+
+
+def fmt_age(seconds: float, style: str | None = None) -> str:
+    """`40m old` (compact) or `-0:40:12` (clock)."""
+    style = style or _duration_style()
+    if style == "clock":
+        return f"-{fmt_clock(seconds)}"
+    return f"{fmt_duration(seconds)} old"
+
+
+def fmt_left(seconds: float, style: str | None = None) -> str:
+    """`5h19m left` (compact) or `+5:19:48` (clock)."""
+    style = style or _duration_style()
+    if style == "clock":
+        return f"+{fmt_clock(seconds)}"
+    return f"{fmt_duration(seconds, sub_minute=True)} left"
+
+
+def _duration_style() -> str:
+    from brew_hop_search.defaults import duration_style
+    return duration_style()
+
 # ── colour helpers ───────────────────────────────────────────────────────────
 
 USE_COLOR = sys.stdout.isatty()
@@ -135,7 +185,7 @@ def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 2.0,
     status_line(dim(f"  # [cache] {' · '.join(parts)}"), done=True)
 
 
-def render_cache_line(entries: list[dict]) -> str:
+def render_cache_line(entries: list[dict], style: str | None = None) -> str:
     """`# [cache] index 2h old, 4h left · installed 12m old, 48m left, changed  [--refresh]`
 
     One clause per source the command just served from: how old the cache
@@ -143,18 +193,24 @@ def render_cache_line(entries: list[dict]) -> str:
     when a witness mtime says brew touched the source since we indexed.
     Always ends with the `[--refresh]` reminder — the line exists so the
     user never has to remember the flag. Uncolored; the caller dims it.
+
+    `style="clock"` (BREW_HOP_SEARCH_DURATION=clock) renders the clause as
+    `index -0:40:12 +5:19:48 changed` — signs carry the meaning, so the
+    commas go too.
     """
     if not entries:
         return ""
+    style = style or _duration_style()
+    sep = " " if style == "clock" else ", "
     clauses = []
     for e in entries:
         age = int(e["age"])
         left = int(e["ttl"]) - age
-        bits = [f"{e['label']} {fmt_duration(age)} old"]
-        bits.append(f"{fmt_duration(left, sub_minute=True)} left" if left > 0 else "stale")
+        bits = [f"{e['label']} {fmt_age(age, style)}"]
+        bits.append(fmt_left(left, style) if left > 0 else "stale")
         if e.get("changed"):
             bits.append("changed")
-        clauses.append(", ".join(bits))
+        clauses.append(sep.join(bits))
     return f"# [cache] {' · '.join(clauses)}  [--refresh]"
 
 

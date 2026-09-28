@@ -21,14 +21,14 @@ from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, output_csv, output_tsv, output_table,
-    output_sql_insert, output_multi, fmt_duration, status_line,
+    output_sql_insert, output_multi, fmt_duration, fmt_age, fmt_left, status_line,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
 
 from brew_hop_search.defaults import (
     parse_duration as _parse_duration_seconds,
-    stale_api_seconds,
+    stale_api_seconds, duration_style,
 )
 
 
@@ -356,7 +356,6 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
         count = table_count(db, kind) or 0
         age = table_age(db, kind)
         label = color_fn(_LABELS[kind])
-        age_str = fmt_duration(age)
         ttl_s, src_layer, env_name = _ttl_for(kind)
         ttl_str = f"ttl {fmt_duration(ttl_s, sub_minute=True)}"
         if verbose >= 2:
@@ -364,16 +363,20 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
                 ttl_str += f" {dim(f'(env: BREW_HOP_SEARCH_{env_name})')}"
             else:
                 ttl_str += f" {dim('(default)')}"
+        clock = duration_style() == "clock"
         parts = [
             f"  {label}",
             f"{count:>6}",
-            f"{dim(age_str + ' ago')}",
+            dim(fmt_age(age) if clock else f"{fmt_duration(age)} ago"),
             dim(ttl_str),
         ]
         if verbose >= 3 and ttl_s > 0:
             remaining = max(0, ttl_s - int(age))
-            parts.append(dim(f"fresh for {fmt_duration(remaining, sub_minute=True)}")
-                         if remaining else dim("stale"))
+            if not remaining:
+                parts.append(dim("stale"))
+            else:
+                parts.append(dim(fmt_left(remaining) if clock
+                                 else f"fresh for {fmt_duration(remaining, sub_minute=True)}"))
         if check_fts:
             fts_name = f"{kind}_fts"
             has_fts = fts_name in db.table_names()

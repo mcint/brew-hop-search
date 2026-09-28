@@ -63,6 +63,23 @@ def _from_env(name: str, default: int) -> int:
         return default
 
 
+# ── duration display style (experimental) ─────────────────────────────────
+
+DURATION_STYLES = ("compact", "clock")
+
+
+def duration_style() -> str:
+    """How ages and time-left render in the reminder line and `-C`.
+
+    `compact` (default): `40m old, 5h19m left`.
+    `clock`: signed clock, `-0:40:12 +5:19:48`; days out to a week keep
+    hours (`-3d 14:05`), then `2w3d`, `2M`, `1y1M`. A trial — see
+    cache-flow.md § Duration style. Unknown values fall back to compact.
+    """
+    raw = (os.environ.get("BREW_HOP_SEARCH_DURATION") or "compact").strip().lower()
+    return raw if raw in DURATION_STYLES else "compact"
+
+
 # ── cache stale thresholds (seconds) ───────────────────────────────────────
 # Each has a function form for tests that mutate env mid-process, plus a
 # module constant that captures the env value once at import time. Most
