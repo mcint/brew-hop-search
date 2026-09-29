@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
-import os
 from pathlib import Path
 
 __version__ = (Path(__file__).parent / "VERSION").read_text().strip()
@@ -13,15 +12,12 @@ BREW_TAP_URL = ""  # set when a tap is published
 
 
 def user_agent() -> str:
-    """User-Agent string. Override via BREW_HOP_SEARCH_UA env var or config."""
-    ua = os.environ.get("BREW_HOP_SEARCH_UA")
-    if ua:
-        return ua
+    """User-Agent string. BREW_HOP_UA / BREW_HOP_SEARCH_UA, [hop] ua, or legacy `user_agent`."""
     try:
-        from brew_hop_search._config import load_config
-        cfg = load_config()
-        if cfg.get("user_agent"):
-            return cfg["user_agent"]
+        from brew_hop_search.settings import get
+        ua = get("ua", tool="search")
+        if ua:
+            return ua
     except Exception:
         pass
     return f"brew-hop-search/{version_info()}"

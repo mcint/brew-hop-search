@@ -1,0 +1,9 @@
+  features  (experimental; off by default; outside the 1.0 promise)
+
+    clock  off  clock-style durations: `updated -0:40:12 ttl +5:19:48` (same as duration=clock)
+    peek   off  brew hop peek — list an untapped tap from GitHub (brew-hop-peek)
+
+    enable:  BREW_HOP_FEATURES=peek,clock   (comma list)
+             BREW_HOP_FEATURE_PEEK=1         (one per feature)
+             [hop] features = ["peek"]      (config.toml)
+             under `brew hop`: HOMEBREW_HOP_FEATURES=…

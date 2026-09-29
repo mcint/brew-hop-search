@@ -21,6 +21,19 @@ brew tap mcint/brew-hop-search
 brew install brew-hop-search
 ```
 
+### `brew hop`
+
+Homebrew runs any `brew-<name>` on your PATH as `brew <name>`, so once
+installed:
+
+```sh
+brew hop search python      # same as brew-hop-search python
+brew hop                    # list verbs
+```
+
+Under `brew hop`, brew passes only `HOMEBREW_*` through, so set
+`HOMEBREW_HOP_…` instead of `BREW_HOP_…` (`brew-hop-search --help=env`).
+
 ## Examples
 
 ```sh

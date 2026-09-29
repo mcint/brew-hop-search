@@ -12,7 +12,6 @@ a trailing status line and a wall-clock duration.
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
@@ -98,8 +97,8 @@ def append_refresh_log(kind: str, duration_ms: int, ok: bool) -> None:
 
 
 def effective_db_path() -> Path:
-    override = os.environ.get("BREW_HOP_SEARCH_DB")
-    return Path(override) if override else DB_PATH
+    from brew_hop_search.settings import get
+    return Path(get("db", tool="search"))
 
 
 def get_db() -> sqlite_utils.Database:

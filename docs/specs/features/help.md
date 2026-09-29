@@ -20,6 +20,8 @@ flags, it explains those flags instead of reprinting generic examples.
 | `--help`                     | Full argparse help (standard `ap.print_help()`)                                         |
 | `-h=MODE` / `--help=MODE`    | Scoped help (flag or section — see below)                                               |
 | `--man` / `-h=man` / `--help=man` | Man page via `$PAGER`                                                              |
+| `--help=env`                 | Every setting: env names per scope, kind, default, config key; the HOMEBREW_HOP twin rule once at the top (generated from `settings.py`) |
+| `--help=features`            | Experimental surfaces with on/off state and how to enable them (generated)               |
 
 Resolution for `=MODE`: flag letter → flag long name → section title →
 error with `did-you-mean`.

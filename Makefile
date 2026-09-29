@@ -1,7 +1,7 @@
 # _guards.sh uses bash-only process substitution; default /bin/sh can't parse it.
 SHELL := /bin/bash
 
-.PHONY: test build readme tag release release-rc release-test release-yes clean help versions publish publish-test bump bump-dev bump-release
+.PHONY: test build readme man-env tag release release-rc release-test release-yes clean help versions publish publish-test bump bump-dev bump-release
 
 VERSION := $(shell tr -d '[:space:]' < src/brew_hop_search/VERSION)
 
@@ -16,6 +16,9 @@ build: test ## Build package (runs tests first)
 
 readme: ## Regenerate README.md from live output
 	./scripts/build-readme.sh > README.md
+
+man-env: ## Regenerate the man page ENVIRONMENT block from settings.py
+	uv run python scripts/gen-man-env.py
 
 tag: ## Create rc tag
 	./scripts/build-tag.sh

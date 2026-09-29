@@ -22,7 +22,6 @@ third consumer wants a schema (see sessions/2026-09-13-requests.md § C3).
 """
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import time
@@ -60,7 +59,8 @@ def format_version(v: tuple[int, int, int] | None) -> str:
 
 
 def _from_env() -> tuple[int, int, int] | None:
-    raw = os.environ.get("BREW_HOP_SEARCH_BREW_VERSION")
+    from brew_hop_search.settings import get
+    raw = get("brew_version", tool="search")
     if not raw:
         return None
     return parse_brew_version(f"Homebrew {raw.strip()}")

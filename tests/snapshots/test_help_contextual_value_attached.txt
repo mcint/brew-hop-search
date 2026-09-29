@@ -6,5 +6,5 @@
     -n, --limit  max results [+offset], 0=all (default: 20, or $BREW_HOP_SEARCH_LIMIT)
 
   more help:
-    --help=<section>      e.g. --help=sources, --help=output
+    --help=<section>      e.g. --help=sources, --help=env, --help=features
     --man                  offline man page

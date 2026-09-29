@@ -88,7 +88,7 @@ def show_terse(parser: argparse.ArgumentParser) -> None:
     print(f"  {bold('info:')}    -C {dim('cache status')}  ·  -V {dim('version')}  ·  -VV {dim('verbose & latest')}")
     print()
     print(f"  {bold('more help:')}")
-    print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=output")
+    print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=env, --help=features")
     print(f"    --help={dim('<flag>')}          e.g. --help=-c, --help=outdated")
     print(f"    --man                  offline man page")
 
@@ -122,7 +122,7 @@ def show_contextual(parser: argparse.ArgumentParser, flag_tokens: list[str]) -> 
 
     print()
     print(f"  {bold('more help:')}")
-    print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=output")
+    print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=env, --help=features")
     print(f"    --man                  offline man page")
     return 0
 
@@ -257,6 +257,14 @@ def show_scoped(parser: argparse.ArgumentParser, mode: str) -> int:
     if mode.lower() in ("query", "syntax", "search", "q"):
         sys.stdout.write(_QUERY_HELP)
         return 0
+    if mode.lower() == "env":
+        from brew_hop_search.settings_docs import render_env_help
+        sys.stdout.write(render_env_help())
+        return 0
+    if mode.lower() == "features":
+        from brew_hop_search.settings_docs import render_features_help
+        sys.stdout.write(render_features_help())
+        return 0
 
     # Section?
     group = _group_by_title(parser, mode)
@@ -295,6 +303,7 @@ def show_scoped(parser: argparse.ArgumentParser, mode: str) -> int:
     sections = {(g.title or "").split()[0].lower()
                 for g in parser._action_groups if g.title}
     sections.discard("")
+    sections |= {"env", "features"}
     print(f"✗ unknown help mode: {mode!r}", file=sys.stderr)
     print(f"  known sections: {', '.join(sorted(sections))}", file=sys.stderr)
     print(f"  or pass a flag letter/name (e.g. -c, cask, outdated, --help)",
