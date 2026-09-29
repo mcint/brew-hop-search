@@ -193,7 +193,10 @@ def resolve(key: str, tool: str = "search", flag=None, config: dict | None = Non
         primary, twin = names[i], names[i + 1]
         pv, tv = os.environ.get(primary, ""), os.environ.get(twin, "")
         if pv and tv and pv != tv:
-            notes.append(f"{primary}={pv} overrides {twin}={tv}")
+            if setting.kind == "secret":   # never echo a token, even in a note
+                notes.append(f"{primary} overrides {twin}")
+            else:
+                notes.append(f"{primary}={pv} overrides {twin}={tv}")
         chosen = (primary, pv) if pv else ((twin, tv) if tv else None)
         if chosen is None:
             continue
@@ -201,7 +204,8 @@ def resolve(key: str, tool: str = "search", flag=None, config: dict | None = Non
         try:
             val = parse_value(setting, raw)
         except ValueError as e:
-            notes.append(f"{name}={raw!r} ignored: {e}")
+            shown = "<set>" if setting.kind == "secret" else repr(raw)
+            notes.append(f"{name}={shown} ignored: {e}")
             continue
         if setting.negate:
             val = not val
