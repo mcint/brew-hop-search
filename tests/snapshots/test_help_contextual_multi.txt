@@ -7,5 +7,5 @@
     -i, --installed      installed packages
 
   more help:
-    --help=<section>      e.g. --help=sources, --help=output
+    --help=<section>      e.g. --help=sources, --help=env, --help=features
     --man                  offline man page

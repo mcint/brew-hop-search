@@ -1,0 +1,43 @@
+  settings
+
+    flag > tool env > family env > config [tool] > config [hop] > default
+    Every BREW_HOP… name has a HOMEBREW_HOP… twin: brew filters the
+    environment to HOMEBREW_* before running `brew hop`, so use the twin there.
+
+  [hop]  every brew-hop tool
+    BREW_HOP_FORMAT        enum     default         [hop] format
+                           default output format when no format flag is given
+    BREW_HOP_FEATURES      list     []              [hop] features
+                           experimental surfaces to enable, comma-separated (see --help=features)
+    BREW_HOP_DURATION      enum     compact         [hop] duration
+                           how ages and TTLs render: compact (40m old) or clock (-0:40:12)
+    BREW_HOP_NO_TIMING     bool     on              [hop] timing
+                           the `# [time]` footer (NO_TIMING=1 turns it off)
+    BREW_HOP_DB            path     ~/.cache/brew-hop-search/brew-hop-search.db  [hop] db
+                           SQLite cache database path
+    BREW_HOP_UA            str      (none)          [hop] ua
+                           User-Agent for HTTP requests
+    BREW_HOP_GITHUB_TOKEN  secret   (none)          [hop] github_token
+                           GitHub API token; else HOMEBREW_GITHUB_API_TOKEN, GITHUB_TOKEN, `gh auth token`
+
+  [search]  brew-hop-search
+    BREW_HOP_SEARCH_CONFIG           path     ~/.config/brew-hop-search/config.toml
+                                     config.toml path (env only, for tests)
+    BREW_HOP_SEARCH_STALE_API        duration 6h              [search] stale_api
+                                     remote index TTL before a background refresh
+    BREW_HOP_SEARCH_STALE_INSTALLED  duration 1h              [search] stale_installed
+                                     installed-packages index TTL
+    BREW_HOP_SEARCH_STALE_TAPS       duration 1h              [search] stale_taps
+                                     tapped-repos index TTL
+    BREW_HOP_SEARCH_STALE_LOCAL      duration 1h              [search] stale_local
+                                     brew API-cache index TTL
+    BREW_HOP_SEARCH_LIMIT            str      20              [search] limit
+                                     default -n / --limit (N[+OFFSET])
+    BREW_HOP_SEARCH_BREW_VERSION     str      (none)        
+                                     pretend `brew --version` said this (tests)
+
+  [peek]  brew-hop-peek
+    BREW_HOP_PEEK_STALE_PEEK  duration 15m             [peek] stale_peek
+                              peeked-tap listing TTL
+
+  override for one tool: BREW_HOP_SEARCH_<KEY> / BREW_HOP_PEEK_<KEY>, or [search] / [peek] in config

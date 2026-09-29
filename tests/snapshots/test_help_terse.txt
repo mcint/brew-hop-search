@@ -13,6 +13,6 @@
   info:    -C cache status  ·  -V version  ·  -VV verbose & latest
 
   more help:
-    --help=<section>      e.g. --help=sources, --help=output
+    --help=<section>      e.g. --help=sources, --help=env, --help=features
     --help=<flag>          e.g. --help=-c, --help=outdated
     --man                  offline man page
