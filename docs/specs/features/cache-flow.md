@@ -191,17 +191,22 @@ happening about it.
 in the reminder line and the `-C` age / fresh-for columns:
 
 ```
-  # [cache] index -0:40:12 +5:19:48 · installed -0:46:10 +0:13:50 changed  [--refresh]
-  # [cache] local -1d 01:00 stale  [--refresh]
+  # [cache] index updated -0:40:12 ttl +5:19:48 · installed updated -0:46:10 ttl +0:13:50 changed  [--refresh]
+  # [cache] taps updated -45s ttl +59m15s  [--refresh]
+  # [cache] local updated -1d 01:00 stale  [--refresh]
 ```
 
-`-` is age, `+` is time until stale; the signs carry the meaning, so
-the commas go. Tiers follow what the eye needs at each range: under a
-day `h:mm:ss` (exact, no unit letters to parse); one to seven days
-`3d 14:05` (morning-vs-evening still matters); then `2w3d`, `3M`
-(30-day months), `1y1M`. Default stays `compact` (`40m old, 5h19m
-left`). A trial: if it earns its keep it graduates to config
-(`[display] duration = "clock"`) and a flag; if not, it goes.
+`updated -N` is age, `ttl +N` is time remaining — `ttl` because
+caching DNS servers taught everyone it counts down. The signs carry
+which is which, the words say what the number is, so the commas go.
+Tiers follow what the eye needs at each range: under five minutes
+`45s` / `4m10s` (a `0:00:45` reads as nothing); under a day `h:mm:ss`
+(exact, no unit letters to parse); one to seven days `3d 14:05`
+(morning-vs-evening still matters); then `2w3d`, `3M` (30-day
+months), `1y1M`. No `/6h` suffix: the TTL's configured value is `-C`'s
+business. Default stays `compact` (`40m old, 5h19m left`). A trial: if
+it earns its keep it graduates to config (`[display] duration =
+"clock"`) and a flag; if not, it goes.
 
 ### Differs/matches detection
 

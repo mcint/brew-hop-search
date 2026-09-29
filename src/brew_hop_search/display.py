@@ -36,8 +36,9 @@ def fmt_duration(seconds: float, sub_minute: bool = False) -> str:
 def fmt_clock(seconds: float) -> str:
     """Experimental clock style. Tiers chosen for what the eye needs:
 
-      < 1d    h:mm:ss      0:40:12   exact, no unit letters to read
-      1–7d    Nd hh:mm     3d 14:05  morning-vs-evening still matters
+      < 5m    Ns / NmNs    45s, 4m10s  "0:00:45" reads as nothing
+      < 1d    h:mm:ss      0:40:12     exact, no unit letters to read
+      1–7d    Nd hh:mm     3d 14:05    morning-vs-evening still matters
       1–8w    Nw[Nd]       2w3d
       ≥ 60d   NM (30d)     3M
       ≥ 365d  Ny[NM]       1y1M
@@ -45,6 +46,9 @@ def fmt_clock(seconds: float) -> str:
     if seconds == float("inf"):
         return "never"
     s = int(seconds)
+    if s < 300:
+        m, sec = divmod(s, 60)
+        return f"{m}m{sec}s" if m else f"{sec}s"
     if s < 86400:
         h, rem = divmod(s, 3600)
         m, sec = divmod(rem, 60)
@@ -195,19 +199,25 @@ def render_cache_line(entries: list[dict], style: str | None = None) -> str:
     user never has to remember the flag. Uncolored; the caller dims it.
 
     `style="clock"` (BREW_HOP_SEARCH_DURATION=clock) renders the clause as
-    `index -0:40:12 +5:19:48 changed` — signs carry the meaning, so the
-    commas go too.
+    `index updated -0:40:12 ttl +5:19:48 changed` — the signs carry age
+    vs remaining, the words say what each number is, so the commas go.
+    `ttl` because caching DNS servers taught everyone it counts down.
     """
     if not entries:
         return ""
     style = style or _duration_style()
-    sep = " " if style == "clock" else ", "
+    clock = style == "clock"
+    sep = " " if clock else ", "
     clauses = []
     for e in entries:
         age = int(e["age"])
         left = int(e["ttl"]) - age
-        bits = [f"{e['label']} {fmt_age(age, style)}"]
-        bits.append(fmt_left(left, style) if left > 0 else "stale")
+        bits = [f"{e['label']} updated {fmt_age(age, style)}" if clock
+                else f"{e['label']} {fmt_age(age, style)}"]
+        if left <= 0:
+            bits.append("stale")
+        else:
+            bits.append(f"ttl {fmt_left(left, style)}" if clock else fmt_left(left, style))
         if e.get("changed"):
             bits.append("changed")
         clauses.append(sep.join(bits))

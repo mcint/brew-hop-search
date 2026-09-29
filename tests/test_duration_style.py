@@ -36,9 +36,12 @@ def test_unknown_style_falls_back_to_compact(monkeypatch):
 # ── fmt_clock: the tiers ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("secs,want", [
-    (0, "0:00:00"),
-    (12, "0:00:12"),
-    (2412, "0:40:12"),                 # under a day: h:mm:ss, no zero-padded hour
+    (0, "0s"),
+    (12, "12s"),                       # < 5m: m/s words — "0:00:12" reads as nothing
+    (250, "4m10s"),
+    (299, "4m59s"),
+    (300, "0:05:00"),                  # ≥ 5m, < 1d: h:mm:ss, no zero-padded hour
+    (2412, "0:40:12"),
     (5 * 3600 + 19 * 60 + 48, "5:19:48"),
     (23 * 3600 + 59 * 60 + 59, "23:59:59"),
     (86400, "1d 00:00"),               # 1–7 days: days + hh:mm (morning vs evening)
@@ -62,6 +65,7 @@ def test_fmt_clock_tiers(secs, want):
 def test_signed_clock_forms():
     from brew_hop_search.display import fmt_age, fmt_left
     assert fmt_age(2412, style="clock") == "-0:40:12"
+    assert fmt_age(45, style="clock") == "-45s"
     assert fmt_left(19188, style="clock") == "+5:19:48"
     assert fmt_age(3 * 86400 + 14 * 3600, style="clock") == "-3d 14:00"
 
@@ -92,11 +96,11 @@ def test_render_cache_line_compact():
 def test_render_cache_line_clock():
     from brew_hop_search.display import render_cache_line
     expect(render_cache_line(_ENTRIES, style="clock"),
-           "# [cache] index -0:40:12 +5:19:48 · installed -0:46:10 +0:13:50 changed"
-           " · local -1d 01:00 stale  [--refresh]\n")
+           "# [cache] index updated -0:40:12 ttl +5:19:48 · installed updated -0:46:10 ttl +0:13:50 changed"
+           " · local updated -1d 01:00 stale  [--refresh]\n")
 
 
 def test_render_cache_line_defaults_to_env(monkeypatch):
     from brew_hop_search.display import render_cache_line
     monkeypatch.setenv("BREW_HOP_SEARCH_DURATION", "clock")
-    assert render_cache_line(_ENTRIES[:1]) == "# [cache] index -0:40:12 +5:19:48  [--refresh]"
+    assert render_cache_line(_ENTRIES[:1]) == "# [cache] index updated -0:40:12 ttl +5:19:48  [--refresh]"
