@@ -21,8 +21,13 @@ CONFIG_PATH = CONFIG_DIR / "config.toml"
 
 
 def effective_config_path() -> Path:
-    override = os.environ.get("BREW_HOP_SEARCH_CONFIG")
-    return Path(override) if override else CONFIG_PATH
+    """BREW_HOP_SEARCH_CONFIG, its HOMEBREW_HOP twin, or the family name.
+
+    Env-only by construction (the config file can't say where the config
+    file is), so `resolve` never re-enters `load_config` here.
+    """
+    from brew_hop_search.settings import get
+    return Path(get("config", tool="search"))
 
 
 def load_config() -> dict:

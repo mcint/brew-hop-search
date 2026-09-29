@@ -233,29 +233,29 @@ def _run_refresh_only(kinds: frozenset, verbose: int = 1) -> None:
 # ── cache status ─────────────────────────────────────────────────────────────
 
 def _ttl_for(kind: str) -> tuple[int, str, str]:
-    """Resolve (ttl_seconds, source_layer, env_var_name) for a cache kind.
+    """Resolve (ttl_seconds, source_layer, origin) for a cache kind.
 
-    source_layer ∈ {"default", "env"}; env_var_name is the BREW_HOP_SEARCH_*
-    name that *would* override (always populated, even when source_layer is
-    "default", so -v can advertise the override knob).
+    source_layer ∈ {"default", "env", "config"}; origin is the env var that
+    answered (`BREW_HOP_STALE_API`, a HOMEBREW_HOP twin, …), the config key
+    (`[search] stale_api`), or — at default — the search-scope env name that
+    *would* override, so -v can advertise the knob. All via settings.py.
     """
-    from brew_hop_search.defaults import (
-        stale_api_seconds, stale_installed_seconds,
-        stale_taps_seconds, stale_local_seconds,
-    )
-    table = {
-        "formula": ("STALE_API", stale_api_seconds),
-        "cask": ("STALE_API", stale_api_seconds),
-        "installed_formula": ("STALE_INSTALLED", stale_installed_seconds),
-        "installed_cask": ("STALE_INSTALLED", stale_installed_seconds),
-        "tap": ("STALE_TAPS", stale_taps_seconds),
-        "local_formula": ("STALE_LOCAL", stale_local_seconds),
-        "local_cask": ("STALE_LOCAL", stale_local_seconds),
-    }
-    env_name, fn = table.get(kind, ("", lambda: 0))
-    val = fn()
-    src = "env" if env_name and os.environ.get(f"BREW_HOP_SEARCH_{env_name}") else "default"
-    return val, src, env_name
+    from brew_hop_search.settings import resolve, env_name as _env_name, SETTING_BY_KEY
+    key = {
+        "formula": "stale_api", "cask": "stale_api",
+        "installed_formula": "stale_installed", "installed_cask": "stale_installed",
+        "tap": "stale_taps",
+        "local_formula": "stale_local", "local_cask": "stale_local",
+    }.get(kind)
+    if key is None:
+        return 0, "default", ""
+    r = resolve(key, tool="search")
+    if r.source.startswith("env:"):
+        return r.value, "env", r.source[len("env:"):]
+    if r.source.startswith("config:"):
+        return r.value, "config", r.source[len("config:"):]
+    # default: advertise the knob that would override it
+    return r.value, "default", _env_name(SETTING_BY_KEY[key], "search")
 
 
 _SOURCE_LABEL = {
@@ -374,7 +374,7 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
         ttl_str = f"ttl {fmt_duration(ttl_s, sub_minute=True)}"
         if verbose >= 2:
             if src_layer == "env":
-                ttl_str += f" {dim(f'(env: BREW_HOP_SEARCH_{env_name})')}"
+                ttl_str += f" {dim(f'({src_layer}: {env_name})')}"
             else:
                 ttl_str += f" {dim('(default)')}"
         clock = duration_style() == "clock"
@@ -454,7 +454,7 @@ def show_cache_status_json() -> None:
                     "fts": f"{kind}_fts" in db.table_names(),
                     "ttl_seconds": ttl_s,
                     "ttl_source": src_layer,
-                    "ttl_env_var": f"BREW_HOP_SEARCH_{env_name}" if env_name else None,
+                    "ttl_env_var": env_name or None,
                 }
                 ws = witness.state(db, kind)
                 if ws["kind"]:

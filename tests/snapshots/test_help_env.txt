@@ -31,7 +31,7 @@
                                      tapped-repos index TTL
     BREW_HOP_SEARCH_STALE_LOCAL      duration 1h              [search] stale_local
                                      brew API-cache index TTL
-    BREW_HOP_SEARCH_LIMIT            str      20              [search] limit
+    BREW_HOP_SEARCH_LIMIT            limit    20              [search] limit
                                      default -n / --limit (N[+OFFSET])
     BREW_HOP_SEARCH_BREW_VERSION     str      (none)        
                                      pretend `brew --version` said this (tests)

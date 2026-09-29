@@ -38,6 +38,8 @@ def sample_values(setting: Setting) -> tuple[str, str]:
         return ("/tmp/a-path", "/tmp/b-path")
     if k == "secret":
         return ("ghp_aaaa", "ghp_bbbb")
+    if k == "limit":
+        return ("30", "10+5")
     return ("value-a", "value-b")
 
 

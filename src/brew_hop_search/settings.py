@@ -19,7 +19,8 @@ from pathlib import Path
 
 FALSY = frozenset({"false", "no", "off", "nil", "0"})
 SCOPES = ("hop", "search", "peek")
-KINDS = ("bool", "duration", "enum", "list", "path", "str", "secret")
+KINDS = ("bool", "duration", "enum", "list", "path", "str", "secret", "limit")
+_LIMIT_RE = __import__("re").compile(r"^(\d+|\d*\+\d+|\d+\+)$")   # N, N+OFF, +OFF, N+
 
 # Output format aliases (canonical → accepted spellings). Was _config._FORMAT_ALIASES.
 FORMAT_ALIASES = {
@@ -83,7 +84,7 @@ SETTINGS: tuple[Setting, ...] = (
             doc="tapped-repos index TTL"),
     Setting("stale_local", "duration", 3600, scope="search",
             doc="brew API-cache index TTL"),
-    Setting("limit", "str", "20", scope="search",
+    Setting("limit", "limit", "20", scope="search",
             doc="default -n / --limit (N[+OFFSET])"),
     Setting("brew_version", "str", None, scope="search", env_only=True,
             doc="pretend `brew --version` said this (tests)"),
@@ -154,6 +155,11 @@ def parse_value(setting: Setting, raw):
         return [x for x in items if x]
     if kind == "path":
         return Path(os.path.expandvars(os.path.expanduser(str(raw))))
+    if kind == "limit":
+        s = str(raw).strip()
+        if not _LIMIT_RE.match(s):
+            raise ValueError("not N[+OFFSET] (examples: 20, 50+10, +10)")
+        return s
     return str(raw)
 
 
