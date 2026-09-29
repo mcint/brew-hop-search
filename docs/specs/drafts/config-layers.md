@@ -37,6 +37,17 @@ Consumers: [peek](peek.md) (first tool-specific namespace),
 table row). Supersedes the `BREW_HOP_SEARCH_DRAFT=1` gate proposed in
 `research/2026-09-14-strategy-toward-1-0.md`.
 
+**Shipped 2026-09-28** (branch feat/peek, plan
+`docs/superpowers/plans/2026-09-28-config-layers.md`): the table
+(`settings.py`), the harness (`settings_testing.py` +
+`tests/test_settings_layers.py`), wiring of every existing accessor,
+`features.py` (`clock` first), `--help=env` / `--help=features`, the
+generated man ENVIRONMENT block (`make man-env`), the `-C -v` dump and
+`# [env]` notes, and the `brew-hop` dispatcher (`hop.py`). Two details
+the spec missed and the plan added: legacy `[output] default` /
+`user_agent` config keys stay readable, and `NO_TIMING=0` is a no-op
+under brew's falsy rule.
+
 ## Purpose
 
 1. **One place.** A setting is declared once — name, kind, default,

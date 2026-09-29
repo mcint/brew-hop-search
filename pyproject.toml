@@ -26,6 +26,7 @@ dependencies = ["sqlite-utils", "packaging"]
 dev = ["pytest"]
 
 [project.scripts]
+brew-hop = "brew_hop_search.hop:main"
 brew-hop-search = "brew_hop_search.cli:main"
 brewhs = "brew_hop_search.cli:main"
 

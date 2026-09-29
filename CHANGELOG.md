@@ -58,6 +58,13 @@ first brew-7.0-aware plumbing. Minor bump because `-L` is renamed
   `user_agent` still read). Booleans follow brew's rule: set and not
   `false|no|off|nil|0` is on — so `BREW_HOP_SEARCH_NO_TIMING=0` no
   longer disables the footer.
+- **`brew hop`.** A `brew-hop` dispatcher: `brew hop search python`
+  runs `brew-hop-search`; `brew hop` lists verbs. Experimental verbs are
+  listed with their on/off state and say how to enable themselves.
+- **Features.** `BREW_HOP_FEATURES=clock` (or `BREW_HOP_FEATURE_CLOCK=1`,
+  or `[hop] features`) switches experiments on by name; `--help=features`
+  lists them. `--help=env` lists every setting, per scope, with defaults;
+  `-C -v` shows the non-default ones and where each came from.
 - **`# [cache] … [--refresh]` reminder line.** Every search, `-i` and
   `-O` ends with one stderr comment per source it served from: age,
   time until stale (or `stale`), `changed` when a witness moved, and
