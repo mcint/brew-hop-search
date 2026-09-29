@@ -47,34 +47,12 @@ def load_config() -> dict:
 
 # ── output format resolution ───────────────────────────────────────────────
 
-# Names accepted in env var / config (canonical → variants).
-_FORMAT_ALIASES = {
-    "default": ("default", "tty", "human"),
-    "json": ("json", "json:full", "full"),
-    "json:short": ("json:short", "short"),
-    "csv": ("csv",),
-    "tsv": ("tsv",),
-    "table": ("table",),
-    "sql": ("sql",),
-    "grep": ("grep",),
-    "multi": ("multi", "long"),
-    "quiet": ("quiet",),
-}
-
-
 def resolve_output_format() -> str | None:
-    """Look up the user-configured default output format.
+    """User-configured default output format (canonical name), or None.
 
-    Returns the canonical format name, or None if no override is set.
-    Env var wins over config.
+    Layers per settings.py: env (any namespace) > [search] format >
+    [hop] format > legacy [output] default. "default" means no override.
     """
-    for source in (os.environ.get("BREW_HOP_SEARCH_FORMAT"),
-                   load_config().get("output", {}).get("default")):
-        if not source:
-            continue
-        v = str(source).strip().lower()
-        for canonical, aliases in _FORMAT_ALIASES.items():
-            if v in aliases:
-                return canonical
-        # Unknown name: keep looking through remaining sources.
-    return None
+    from brew_hop_search.settings import resolve
+    r = resolve("format", tool="search")
+    return None if r.source == "default" else r.value   # an explicit "default" is returned as such

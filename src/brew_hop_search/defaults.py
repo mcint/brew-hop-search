@@ -5,7 +5,8 @@
 
 Resolution order for any setting that supports it:
 
-    defaults here  →  env var (BREW_HOP_SEARCH_<NAME>)  →  CLI flag
+    defaults (settings.py table)  →  config.toml  →  env var  →  CLI flag
+    env: BREW_HOP_SEARCH_<NAME>, BREW_HOP_<NAME>, or HOMEBREW_HOP… twins
 
 `STALE_API` and friends are resolved at module import — set the env vars
 *before* invoking the CLI to take effect. The accessor functions
@@ -19,7 +20,6 @@ Test ergonomics ("12-factor short-timeout"):
 """
 from __future__ import annotations
 
-import os
 import re
 
 # ── duration parsing ───────────────────────────────────────────────────────
@@ -52,15 +52,11 @@ def parse_duration(s: str) -> int:
 
 # ── env-var resolution helper ──────────────────────────────────────────────
 
-def _from_env(name: str, default: int) -> int:
-    """Look up BREW_HOP_SEARCH_<name> as a duration; return default on miss."""
-    raw = os.environ.get(f"BREW_HOP_SEARCH_{name}")
-    if raw is None:
-        return default
-    try:
-        return parse_duration(raw)
-    except (ValueError, TypeError):
-        return default
+def _get(key: str):
+    """Read `key` through the settings table (BREW_HOP_SEARCH_<KEY>,
+    BREW_HOP_<KEY>, HOMEBREW_HOP… twins, config.toml tables, default)."""
+    from brew_hop_search.settings import get
+    return get(key, tool="search")
 
 
 # ── duration display style (experimental) ─────────────────────────────────
@@ -76,8 +72,7 @@ def duration_style() -> str:
     hours (`-3d 14:05`), then `2w3d`, `2M`, `1y1M`. A trial — see
     cache-flow.md § Duration style. Unknown values fall back to compact.
     """
-    raw = (os.environ.get("BREW_HOP_SEARCH_DURATION") or "compact").strip().lower()
-    return raw if raw in DURATION_STYLES else "compact"
+    return _get("duration")
 
 
 # ── cache stale thresholds (seconds) ───────────────────────────────────────
@@ -88,22 +83,22 @@ def duration_style() -> str:
 
 def stale_api_seconds() -> int:
     """API index (formulae.brew.sh). Drives `--stale` and bg refresh."""
-    return _from_env("STALE_API", 6 * 3600)
+    return _get("stale_api")
 
 
 def stale_taps_seconds() -> int:
     """Tapped repos (scanned from $(brew --repo)/Library/Taps/)."""
-    return _from_env("STALE_TAPS", 3600)
+    return _get("stale_taps")
 
 
 def stale_installed_seconds() -> int:
     """Installed-packages index (`brew info --json=v2 --installed`)."""
-    return _from_env("STALE_INSTALLED", 3600)
+    return _get("stale_installed")
 
 
 def stale_local_seconds() -> int:
     """Local brew API cache at $(brew --cache)/api/."""
-    return _from_env("STALE_LOCAL", 3600)
+    return _get("stale_local")
 
 
 # Back-compat constants, captured at import.

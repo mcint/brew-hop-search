@@ -15,7 +15,6 @@ scaffolding below is here so they slot in without a rewrite.
 """
 from __future__ import annotations
 
-import os
 import sys
 import time
 from typing import Any
@@ -80,7 +79,8 @@ def should_emit(args: Any) -> bool:
         return False
     if getattr(args, "no_timing", False):
         return False
-    if os.environ.get("BREW_HOP_SEARCH_NO_TIMING"):
+    from brew_hop_search.settings import get
+    if not get("timing", tool="search"):   # NO_TIMING env / [hop] timing = false
         return False
     # Help and version paths are info-only; the wall-clock isn't
     # interesting and would clutter the help screen.

@@ -646,11 +646,11 @@ def _main_inner(argv, _args_holder):
                      help="SQLite INSERT statements")
     fmt.add_argument("--multi", "--long", action="store_true",
                      help="multi-line per-result with labeled fields")
-    from brew_hop_search.defaults import LIMIT as DEFAULT_LIMIT
+    from brew_hop_search.settings import get as _setting
     fmt.add_argument("-n", "--limit", type=str,
-                     default=os.environ.get("BREW_HOP_SEARCH_LIMIT", DEFAULT_LIMIT),
+                     default=_setting("limit", tool="search"),
                      metavar="N[+OFF]",
-                     help=f"max results [+offset], 0=all (default: {DEFAULT_LIMIT}, or $BREW_HOP_SEARCH_LIMIT)")
+                     help="max results [+offset], 0=all (default: 20, or $BREW_HOP_SEARCH_LIMIT)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
                      help="source tags, cache info (-vv per-source detail)")
     fmt.add_argument("--no-timing", action="store_true",

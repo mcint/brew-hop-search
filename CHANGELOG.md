@@ -49,6 +49,15 @@ first brew-7.0-aware plumbing. Minor bump because `-L` is renamed
   `taps` and `local` share one detached runner (`sources/_bg.py`) with
   the sentinel + `refresh.log` contract the trailing line already
   polls.
+- **One settings table.** Every env var, config key and default now
+  comes from `settings.py`. New without renaming anything: family-scope
+  names (`BREW_HOP_FORMAT` applies to every tool; `BREW_HOP_SEARCH_FORMAT`
+  overrides it for search), `HOMEBREW_HOP…` twins so settings survive
+  `brew hop` (brew filters the environment to `HOMEBREW_*`), and
+  `[hop]` / `[search]` tables in config.toml (`[output] default` and
+  `user_agent` still read). Booleans follow brew's rule: set and not
+  `false|no|off|nil|0` is on — so `BREW_HOP_SEARCH_NO_TIMING=0` no
+  longer disables the footer.
 - **`# [cache] … [--refresh]` reminder line.** Every search, `-i` and
   `-O` ends with one stderr comment per source it served from: age,
   time until stale (or `stale`), `changed` when a witness moved, and
