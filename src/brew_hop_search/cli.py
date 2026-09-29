@@ -322,6 +322,20 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
     print(f"  {bold('db')}  {CACHE_DIR.name}/{DB_PATH.name}{size_str}")
     _show_brew_version(verbose, force=refresh_brew)
 
+    # Settings exist whether or not the DB does: non-defaults + features at
+    # -v, resolver notes (twin conflicts, ignored garbage) on stderr.
+    if verbose >= 2:
+        from brew_hop_search.settings_docs import non_defaults, notes
+        from brew_hop_search.features import features_enabled
+        rows = non_defaults()
+        feats = sorted(features_enabled())
+        print(f"  {bold('settings')}  {len(rows)} non-default"
+              + (f"  ·  features: {', '.join(feats)}" if feats else ""))
+        for name, shown, source in rows:
+            print(f"    {name}  {shown}  {dim(source)}")
+        for n in notes():
+            print(dim(f"  # [env] {n}"), file=sys.stderr)
+
     if not db_exists:
         print(dim("  no database — run a search to build the index"))
         return
@@ -449,6 +463,11 @@ def show_cache_status_json() -> None:
                         "changed": ws["changed"], "paths": ws["paths"],
                     }
                 source_count += 1
+    from brew_hop_search.settings_docs import non_defaults
+    from brew_hop_search.features import features_enabled
+    info["settings"] = {name: {"value": shown, "source": source}
+                        for name, shown, source in non_defaults()}
+    info["features"] = sorted(features_enabled())
     env = _envelope("cache-status", info, count=source_count)
     print(json_mod.dumps(env, indent=2))
 
@@ -1096,6 +1115,11 @@ def _main_inner(argv, _args_holder):
         from brew_hop_search import brewver
         for line in brewver.skipped_report():
             print(dim(f"  # [brew] {line}"), file=sys.stderr)
+        # Env that didn't take effect (twin conflicts, ignored garbage): the
+        # answer to "why isn't my env var doing anything".
+        from brew_hop_search.settings_docs import notes
+        for n in notes():
+            print(dim(f"  # [env] {n}"), file=sys.stderr)
 
     # Reminder line (what you were just served, and how to refresh it), then
     # the trailing status for any bg refresh in flight. Both stderr.

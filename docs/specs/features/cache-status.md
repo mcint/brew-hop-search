@@ -58,6 +58,19 @@ Features that a command skips because brew is too old are reported at
 the end of that command's run (`skipped <feature>: needs brew X, have Y`),
 never silently dropped.
 
+`-C -v` also prints a `settings` block: every setting whose value did
+not come from its default, as `NAME  value  source` (secrets show
+`set`), plus the enabled features; `# [env]` stderr lines report twin
+conflicts and ignored garbage. `-C --json` carries the same as
+`settings` and `features`. Generated from the settings table
+([config-layers](../drafts/config-layers.md)).
+
+```
+  settings  2 non-default  ·  features: clock
+    BREW_HOP_SEARCH_STALE_API  2h  env:BREW_HOP_STALE_API
+    BREW_HOP_GITHUB_TOKEN  set  env:BREW_HOP_GITHUB_TOKEN
+```
+
 ### `-vv`: next-refresh ETA
 
 Adds `fresh for <duration>` (or `stale` if already past):
