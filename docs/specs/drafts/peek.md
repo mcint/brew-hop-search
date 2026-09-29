@@ -2,16 +2,18 @@
 title: peek — glance at a tap where it lives, without `brew tap`
 date: 2026-09-28
 kind: draft-spec
-status: draft — awaiting user review before writing-plans
+status: draft, rev 2 — awaiting user review before writing-plans
 tldr: >
-  `bhs peek user/repo` lists a tap's formulae and casks straight from
-  GitHub: two scoped requests (repo metadata + one tarball), parsed with
-  the existing .rb parser, printed in the house format with the
-  normalized brew slug and local cross-references (tapped / installed).
-  The verbosity ladder teaches: -v the URLs, -vv the tree, -vvv the
-  curl|tar|jq you could run yourself. Every remote request is logged in
-  the DB (30d) and the listing is cached (15m); `bhs peek` alone shows
-  what you've peeked before. First verb of the Option B subcommand layer.
+  `brew hop peek user/repo` (= `brew-hop-peek`) lists a tap's formulae and
+  casks straight from GitHub: two scoped requests (repo metadata + one
+  tarball), parsed with the existing .rb parser, printed in the house
+  format with the normalized brew slug and local cross-references (tapped
+  / installed). The verbosity ladder teaches: -v the URLs, -vv the tree,
+  -vvv the curl|tar|jq you could run yourself. Every remote request is
+  logged in the DB (30d) and the listing is cached (15m); bare `peek`
+  shows what you've peeked before. Not a subcommand of brew-hop-search:
+  its own entry point behind the `peek` feature flag, reached through the
+  `brew-hop` dispatcher (config-layers.md).
 ---
 
 # peek — glance at a tap where it lives, without `brew tap`
@@ -28,11 +30,14 @@ ships, tells you what you already have, and shows you how it looked.
 brew taps without installing … read the descriptions … from the url /
 gh short description … `-v`/`-vv`/`-vvv` showing the urls, file
 structure, `curl | jq` equivalent, to educate myself and other users")
-and the 2026-09-28 conversation (targets, audit log, subcommand shape,
-caching). Bead bhs-u7e. This is the **first verb of Option B** in
-[cli-vocabulary](cli-vocabulary.md): it lands the verb dispatch, and
-the existing flag surface stays untouched. The wider "inspect a thing
-where it lives" family (§ Later verbs) is noted, not designed.
+and the 2026-09-28 conversation (targets, audit log, caching; **not a
+subcommand yet** — a feature-flagged entry point behind the `brew-hop`
+dispatcher). Bead bhs-u7e. Rev 2 follows
+[config-layers](config-layers.md) (namespaces, features, dispatch) and
+the [brew env research](../../research/2026-09-28-brew-env-config-and-external-commands.md).
+The existing `brew-hop-search` flag surface is untouched. The wider
+"inspect a thing where it lives" family (§ Later verbs) is noted, not
+designed.
 
 ## Purpose
 
@@ -53,25 +58,41 @@ Three things, in order of how often they'll matter:
 
 ## Design
 
-### Invocation and the subcommand layer
+### Invocation — an entry point, not a subcommand
 
 ```
-bhs peek <target> [query] [-f|-c] [--refresh] [--offline] [-v…] [--json]
-bhs peek                       # what have I peeked, and when
+brew hop peek <target> [query] [-f|-c] [--refresh] [--offline] [-v…] [--json]
+brew-hop-peek <target> …       # the same binary, called directly
+brew hop peek                  # what have I peeked, and when
 ```
 
-`peek` is a **verb**: the first word of argv. The CLI gains a verb
-dispatch that is deliberately thin — if `argv[0]` is a known verb, a
-per-verb argparse parser handles the rest; otherwise the existing flat
-parser runs exactly as today. No flag is renamed, aliased or hidden
-by this spec. `peek` appears in `--help` under a new `verbs:` group;
-`bhs peek --help` is its own screen ([help](help.md) tiers apply).
+`peek` is its **own program**, `brew-hop-peek`, reached three ways that
+are all the same process: `brew hop peek …` (brew's external-command
+dispatch runs `brew-hop` with `argv = [peek, …]`, and `brew-hop`
+`exec`s `brew-hop-peek`, git-style), `brew-hop peek …`, or
+`brew-hop-peek …`. `brew-hop-search` does not grow a verb, does not
+import peek, and its flag surface is untouched. The dispatcher and the
+naming are specified in [config-layers](config-layers.md) § `brew hop`
+dispatch; this spec only requires that `brew-hop-peek` exist as a
+`[project.scripts]` entry and be installed by the tap Formula.
 
-`peek` is not draft-gated (`BREW_HOP_SEARCH_DRAFT=1` is not required):
-it changes no existing behavior, and gating it would hide the one
-thing this release adds. The staging note in
-`sessions/2026-09-13-requests.md` § C1 applied to verbs that
-*duplicate* flags; `peek` duplicates nothing.
+**Feature-gated.** `peek` is an experimental surface: it runs only when
+`peek` is in the features list (`BREW_HOP_FEATURES=peek`, or
+`HOMEBREW_HOP_FEATURES=peek` under `brew hop`, or `[hop] features =
+["peek"]`; per config-layers). Off, the binary says so and exits 2:
+
+```
+peek is experimental — enable it with BREW_HOP_FEATURES=peek
+(under `brew hop`: HOMEBREW_HOP_FEATURES=peek; or [hop] features in config)
+```
+
+It is not hidden: `brew hop` lists it as `peek (experimental, off)`,
+and `--help=features` explains it. Gated surfaces may rename freely
+and are outside the 1.0 promise.
+
+Its settings live in the `peek` namespace (`BREW_HOP_PEEK_<KEY>`,
+`[peek]`), falling back to the family (`BREW_HOP_<KEY>`, `[hop]`):
+`STALE_PEEK`, `FORMAT`, `DURATION`, `GITHUB_TOKEN`, the caps below.
 
 `query` filters the listing with the same [search syntax](search-syntax.md)
 as `-t`; `-f`/`-c` narrow the kind, as everywhere.
@@ -130,12 +151,29 @@ Over a cap: stop, say so (`# [remote] tarball 34 MB > 20 MB cap —
 BREW_HOP_SEARCH_PEEK_MAX_MB=40 to raise`), exit 1. A tap that big is
 not a tap; it's worth a pause.
 
-Auth: if `gh auth token` (the `gh` CLI, on PATH, already logged in)
-returns a token, send it as `Authorization: Bearer`. Otherwise
-anonymous — 60 requests/hour is 30 peeks, plenty. `GITHUB_TOKEN` in
-the environment is honored first (12-factor, CI-friendly). No token
-is ever stored by us. `-v` says which of the three applied
-(`auth: gh` / `auth: env` / `auth: none`).
+**Auth — checked in brew's order, reported, never printed.** The
+token sources are tried in the order brew itself uses
+(`utils/github/api.rb#credentials`, research § 1), plus the generic
+CI variable brew deliberately strips:
+
+| # | source | note |
+|---|--------|------|
+| 1 | `BREW_HOP_GITHUB_TOKEN` / `HOMEBREW_HOP_GITHUB_TOKEN` (`[hop] github_token`) | ours; a `secret` setting |
+| 2 | `HOMEBREW_GITHUB_API_TOKEN` | brew's own; the only token that survives `brew hop` |
+| 3 | `GITHUB_TOKEN` | CI convention; **does not reach `brew hop peek`** (brew strips `GITHUB_*TOKEN*`) — works for `brew-hop-peek` direct |
+| 4 | `gh auth token --hostname github.com` | the `gh` CLI, if on PATH and logged in |
+| — | anonymous | 60 requests/hour = 30 peeks |
+
+The first non-empty answer is sent as `Authorization: Bearer`. Every
+source is *checked* in that order and the outcome is reported at `-v`
+as one line, e.g. `# [auth] HOMEBREW_GITHUB_API_TOKEN: unset ·
+GITHUB_TOKEN: unset · gh auth token: used`, and in `--json` as
+`meta.auth = {"used": "gh", "checked": [...]}`. The value is never
+printed, logged, or stored; `remote_log.auth` records only the source
+name. The precedence table is also in `brew hop peek --help` (and in
+the man ENVIRONMENT block config-layers generates), so nobody has to
+read this spec to know why their token wasn't used — the `brew hop`
+filtering surprise in row 3 being the one worth a sentence in help.
 
 Transport is stdlib `urllib`, same as `sources/api.py`, with the
 existing User-Agent. No new dependency.
@@ -235,7 +273,7 @@ cache for peek:user/repo` — no request. Stale-and-present follows
 cache-flow: serve, background-refresh, trailing line. (The `_bg`
 runner gains a `peek:<slug>` kind.)
 
-`bhs peek` with no target lists `_meta` rows with kind `peek:*`:
+`brew hop peek` with no target lists `_meta` rows with kind `peek:*`:
 
 ```
   # peeked (3)
@@ -303,6 +341,12 @@ can arrive without re-spelling the verb:
 - name conflicts across `-f`/`-c`/`-t`/`-l` — a `conflicts` view,
   or a `-C -vv` section; either way not `peek`.
 - non-GitHub remotes via `git clone --depth 1` into the cache dir.
+- **a local artifact view** (bead bhs-r8m, user's suggestion): a
+  generated page — served locally, lmux-style — showing for a peeked
+  tap the repo, live status and age, and side-by-side local
+  (`Library/Taps`, `opt/`) and GitHub links for checking, as opposed to
+  an all-powerful artifact object. Not designed; `--json` is the seam
+  it would consume.
 
 None of these are in v1. They are here so the target grammar
 (`[type:]name-or-slug-or-url`) and the `remote_log` table don't need
@@ -311,13 +355,13 @@ to change when they come.
 ## Examples
 
 ```sh
-bhs peek steipete/tap                 # what's in it, am I using any of it
-bhs peek gh:openai/tools -f            # formulae only
-bhs peek https://github.com/borkdude/homebrew-brew/tree/main clj
-bhs peek steipete/tap -vvv 2>&1 | less # learn the plumbing
-bhs peek --json openai/tools | jq '.formulae[].name'
-bhs peek                               # what have I peeked lately
-bhs peek --offline steipete/tap        # from the table, no request
+brew hop peek steipete/tap                 # what's in it, am I using any of it
+brew hop peek gh:openai/tools -f            # formulae only
+brew hop peek https://github.com/borkdude/homebrew-brew/tree/main clj
+brew hop peek steipete/tap -vvv 2>&1 | less # learn the plumbing
+brew hop peek --json openai/tools | jq '.formulae[].name'
+brew hop peek                               # what have I peeked lately
+brew hop peek --offline steipete/tap        # from the table, no request
 bhs -C -v                              # how many requests, to whom, when
 ```
 
@@ -336,9 +380,16 @@ Red-green, expect/snapshot, no network in tests:
   tarball; `●` and `tapped` from a seeded DB; the `-vvv` equiv block
   never contains a token value.
 - **Persistence**: table round-trip, TTL served vs refetched,
-  `--offline`, `bhs peek` listing order (newest first), pruning.
+  `--offline`, bare `peek` listing order (newest first), pruning.
 - **Audit**: one `remote_log` row per request incl. a failure; `-C`
   count line; 30-day prune.
-- **Dispatch**: `bhs peek …` reaches the verb; `bhs python`, `bhs -i`
-  unchanged (existing snapshots stay green); `bhs peek --help`
-  snapshot.
+- **Auth**: source order with each of the four set alone and in
+  combination; the `-v` report and `meta.auth` name the source; no
+  test output ever contains the token value (assert on a sentinel).
+- **Gate**: with `peek` absent from features → exit 2 and the enable
+  hint; present via `BREW_HOP_FEATURES`, `HOMEBREW_HOP_FEATURES`, and
+  config → runs. The harness in config-layers covers the layering.
+- **Dispatch**: `brew-hop peek …` execs `brew-hop-peek` with argv
+  intact (subprocess test with a fake `brew-hop-peek` on PATH);
+  `brew-hop-search` snapshots unchanged; `brew-hop-peek --help`
+  snapshot includes the token precedence table.

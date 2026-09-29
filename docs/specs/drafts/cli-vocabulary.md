@@ -172,8 +172,9 @@ bhs search --stale 1h python
 bhs refresh installed --max-age 6h
 ```
 
-First verb, spec'd: [peek](peek.md) — lands the thin verb dispatch
-without touching the flag surface (2026-09-28, bhs-u7e).
+First tool spec'd against this: [peek](peek.md) — its own `brew-hop-peek` entry point
+behind the `brew-hop` dispatcher ([config-layers](config-layers.md)), not a verb
+inside brew-hop-search; the flag surface is untouched (2026-09-28, bhs-u7e).
 
 Pros: makes verbs explicit. Better `--help` organization (per-verb
 help screens). Matches `gh`, `git`, `kubectl` conventions. Scales
