@@ -205,8 +205,14 @@ Tiers follow what the eye needs at each range: under five minutes
 (morning-vs-evening still matters); then `2w3d`, `3M` (30-day
 months), `1y1M`. No `/6h` suffix: the TTL's configured value is `-C`'s
 business. Default stays `compact` (`40m old, 5h19m left`). A trial: if
-it earns its keep it graduates to config (`[display] duration =
-"clock"`) and a flag; if not, it goes.
+it earns its keep it graduates to a plain setting and a flag; if not,
+it goes.
+
+It is also the first entry in the features list: `BREW_HOP_FEATURES=clock`
+(or `[hop] features = ["clock"]`) is the same switch, spelled the way
+every other experiment will be (config-layers § Features). `duration =
+"clock"` (env `BREW_HOP_DURATION` / `[hop] duration`) stays for when it
+graduates to a plain setting.
 
 ### Differs/matches detection
 

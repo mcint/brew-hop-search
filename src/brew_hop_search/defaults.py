@@ -72,6 +72,9 @@ def duration_style() -> str:
     hours (`-3d 14:05`), then `2w3d`, `2M`, `1y1M`. A trial — see
     cache-flow.md § Duration style. Unknown values fall back to compact.
     """
+    from brew_hop_search.features import feature_on
+    if feature_on("clock", tool="search"):   # same switch, spelled as a feature
+        return "clock"
     return _get("duration")
 
 
