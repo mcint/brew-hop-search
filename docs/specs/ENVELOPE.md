@@ -35,6 +35,7 @@ All `--json` output wraps results in a self-describing `meta` envelope.
 | `total` | search | Total entries across searched sources |
 | `count` | always | Results in this response |
 | `mode` | outdated diff | `"diff"` when `--brew-verify` used |
+| `cache` | search | Per-source cache facts, the JSON form of the `# [cache]` reminder line: `{"<source>": {"age_s", "ttl_s", "stale", "changed"}}`. `changed` = a witness mtime moved since indexing (cache-flow.md § Witness mtimes). Omitted when no source had a cache. |
 | `date` | always | ISO 8601 timestamp with timezone |
 
 Fields are **omitted** (not null) when they don't apply.
@@ -52,6 +53,9 @@ Fields are **omitted** (not null) when they don't apply.
     "limit": 20,
     "total": 15895,
     "count": 8,
+    "cache": {
+      "index": { "age_s": 7200, "ttl_s": 21600, "stale": false, "changed": false }
+    },
     "date": "2026-04-09T14:30:00-07:00"
   },
   "results": {

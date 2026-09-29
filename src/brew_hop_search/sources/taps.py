@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -14,9 +15,13 @@ from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red
 
 from brew_hop_search.defaults import stale_taps_seconds
+from brew_hop_search import witness
 
 
 def _brew_prefix() -> Path:
+    env = os.environ.get("HOMEBREW_REPOSITORY")
+    if env:
+        return Path(env)
     result = subprocess.run(["brew", "--repository"], capture_output=True, text=True)
     return Path(result.stdout.strip())
 
@@ -172,6 +177,7 @@ def refresh(silent: bool = False) -> bool:
     if not silent:
         print(dim("  \u21bb scanning taps \u2026"), file=sys.stderr)
     try:
+        wit = witness.witness_mtime("taps")  # before the scan, not after
         items = scan_taps()
         meta = fetch_tap_meta()
         # Annotate the scanned items (not just the row projection): search
@@ -197,7 +203,7 @@ def refresh(silent: bool = False) -> bool:
         import_to_db(db, "tap", rows,
                       ["slug", "name", "tap", "desc", "homepage", "version",
                        "added_at", "modified_at", "trusted", "official", "raw"],
-                      "slug", ["name", "tap", "desc"])
+                      "slug", ["name", "tap", "desc"], witness=wit)
         if not silent:
             print(dim(f"  \u2713 indexed {len(rows)} tap formulae/casks"), file=sys.stderr)
         return True
@@ -207,15 +213,25 @@ def refresh(silent: bool = False) -> bool:
         return False
 
 
-def ensure_cache(force: bool = False, stale: int | None = None) -> bool:
+def background_refresh() -> None:
+    """Rescan taps in a detached subprocess. Returns immediately."""
+    from brew_hop_search.sources import _bg
+    _bg.background_refresh("taps")
+
+
+def ensure_cache(force: bool = False, stale: int | None = None,
+                 allow_bg: bool = True) -> bool:
+    """Cache-first. Stale = TTL expired *or* a witness moved (`brew tap`,
+    `untap`, `update` touched Library/Taps); either way the rescan runs in
+    the background and the read is served from what's on disk now."""
     if stale is None:
         stale = stale_taps_seconds()
     db = get_db()
-    needs_sync = force or not table_exists(db, "tap")
-    if not needs_sync:
-        age = table_age(db, "tap")
-        if age > stale:
-            needs_sync = True
-    if needs_sync:
+    if force or not table_exists(db, "tap"):
         return refresh()
+    if table_age(db, "tap") > stale or witness.changed(db, "tap"):
+        if allow_bg:
+            background_refresh()
+        else:
+            return refresh()
     return True

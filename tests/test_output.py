@@ -183,6 +183,7 @@ def test_json_output(snap, testdb):
     output = _run_with_db(testdb, "--json", "node")
     # Normalize dynamic date field for snapshot stability
     output = re.sub(r'"date": "[^"]+"', '"date": "NORMALIZED"', output)
+    output = re.sub(r'"age_s": \d+', '"age_s": "NORMALIZED"', output)  # seeded now-3600, ±clock
     snap.assert_match(output)
 
 

@@ -107,7 +107,8 @@ def show_contextual(parser: argparse.ArgumentParser, flag_tokens: list[str]) -> 
     # Accepts `-n0`, `--limit=50`, and `-VV` by stripping the value/repeat
     # suffix and matching the flag stem.
     rows: list[tuple[str, str]] = []
-    for tok in flag_tokens:
+    expanded = [t for tok in flag_tokens for t in expand_short_cluster(parser, tok)]
+    for tok in expanded:
         match = _find_flag_action(parser, tok)
         if match is None:
             rows.append((tok, dim("(unknown flag)")))
@@ -164,6 +165,38 @@ def _find_flag_action(parser: argparse.ArgumentParser, tok: str):
             if short in a.option_strings:
                 return a
     return None
+
+
+def expand_short_cluster(parser: argparse.ArgumentParser, tok: str) -> list[str]:
+    """`-OT` → `['-O', '-T']`, the way argparse itself reads a cluster.
+
+    Walk the cluster left to right. A flag that takes no value (store_true,
+    count, …) consumes one letter and the walk continues; a repeat of a
+    count flag (`-VV`) collapses to one; a flag that takes a value swallows
+    the rest as its value (`-n0`, `-VVn5` → `-V`, `-n5`); an unknown letter
+    is kept as `-x` so the caller can say so. Long options and bare `-x`
+    pass through.
+    """
+    if not (len(tok) > 2 and tok.startswith("-") and not tok.startswith("--")):
+        return [tok]
+    by_short = {s: a for a in parser._actions for s in a.option_strings
+                if len(s) == 2 and s.startswith("-")}
+    out: list[str] = []
+    i = 1
+    while i < len(tok):
+        flag = "-" + tok[i]
+        action = by_short.get(flag)
+        if action is None:
+            out.append(flag)
+            i += 1
+        elif action.nargs == 0:
+            if not out or out[-1] != flag:
+                out.append(flag)
+            i += 1
+        else:
+            out.append(flag + tok[i + 1:])
+            break
+    return out
 
 
 def _action_matches(action, key: str) -> bool:

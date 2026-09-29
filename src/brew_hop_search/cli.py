@@ -21,14 +21,14 @@ from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, output_csv, output_tsv, output_table,
-    output_sql_insert, output_multi, fmt_duration, status_line,
+    output_sql_insert, output_multi, fmt_duration, fmt_age, fmt_left, status_line,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
 
 from brew_hop_search.defaults import (
     parse_duration as _parse_duration_seconds,
-    stale_api_seconds,
+    stale_api_seconds, duration_style,
 )
 
 
@@ -258,6 +258,48 @@ def _ttl_for(kind: str) -> tuple[int, str, str]:
     return val, src, env_name
 
 
+_SOURCE_LABEL = {
+    "formula": "index", "cask": "index",
+    "installed_formula": "installed", "installed_cask": "installed",
+    "tap": "taps",
+    "local_formula": "local", "local_cask": "local",
+}
+
+
+def cache_entries(db, kinds: list[str]) -> list[dict]:
+    """Collapse the tables a command touched into per-source reminder facts.
+
+    formula+cask are one fetch → one `index` clause (youngest age wins);
+    likewise installed_* and local_*. Tables with no cache are skipped —
+    there is nothing to be reminded about. Order follows first appearance.
+    """
+    from brew_hop_search import witness
+    out: dict[str, dict] = {}
+    for kind in kinds:
+        label = _SOURCE_LABEL.get(kind)
+        if label is None or not table_exists(db, kind):
+            continue
+        age = table_age(db, kind)
+        if age == float("inf"):
+            continue
+        ttl, _, _ = _ttl_for(kind)
+        changed = witness.changed(db, kind)
+        e = out.get(label)
+        if e is None:
+            out[label] = {"label": label, "age": age, "ttl": ttl, "changed": changed}
+        else:
+            e["age"] = min(e["age"], age)
+            e["changed"] = e["changed"] or changed
+    return list(out.values())
+
+
+def _emit_cache_line(entries: list[dict], verbose: int) -> None:
+    from brew_hop_search.display import render_cache_line, should_emit_cache_line
+    if not entries or not should_emit_cache_line(verbose):
+        return
+    print(dim(f"  {render_cache_line(entries)}"), file=sys.stderr)
+
+
 def _show_brew_version(verbose: int, force: bool = False) -> None:
     """`brew  7.0.1` line; at -v, one line per version-gated feature."""
     from brew_hop_search import brewver
@@ -306,13 +348,14 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
         "local_cask": "local:c",
     }
 
+    from brew_hop_search import witness
+    shown_witness: set[str] = set()
     for kind, color_fn, check_fts in sources:
         if not table_exists(db, kind):
             continue
         count = table_count(db, kind) or 0
         age = table_age(db, kind)
         label = color_fn(_LABELS[kind])
-        age_str = fmt_duration(age)
         ttl_s, src_layer, env_name = _ttl_for(kind)
         ttl_str = f"ttl {fmt_duration(ttl_s, sub_minute=True)}"
         if verbose >= 2:
@@ -320,16 +363,20 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
                 ttl_str += f" {dim(f'(env: BREW_HOP_SEARCH_{env_name})')}"
             else:
                 ttl_str += f" {dim('(default)')}"
+        clock = duration_style() == "clock"
         parts = [
             f"  {label}",
             f"{count:>6}",
-            f"{dim(age_str + ' ago')}",
+            dim(fmt_age(age) if clock else f"{fmt_duration(age)} ago"),
             dim(ttl_str),
         ]
         if verbose >= 3 and ttl_s > 0:
             remaining = max(0, ttl_s - int(age))
-            parts.append(dim(f"fresh for {fmt_duration(remaining, sub_minute=True)}")
-                         if remaining else dim("stale"))
+            if not remaining:
+                parts.append(dim("stale"))
+            else:
+                parts.append(dim(fmt_left(remaining) if clock
+                                 else f"fresh for {fmt_duration(remaining, sub_minute=True)}"))
         if check_fts:
             fts_name = f"{kind}_fts"
             has_fts = fts_name in db.table_names()
@@ -338,14 +385,29 @@ def show_cache_status(verbose: int = 1, refresh_brew: bool = False) -> None:
             if jp.exists():
                 jp_mb = jp.stat().st_size / (1024 * 1024)
                 parts.append(dim(f"{jp_mb:.0f}MB json"))
+        # Witness state (cache-flow.md § Witness mtimes): default flags only
+        # a moved witness; -v names the state; -vv lists the paths once per
+        # witness kind.
+        ws = witness.state(db, kind)
+        if ws["kind"]:
+            if ws["changed"]:
+                parts.append(yellow("witness changed" if verbose >= 2 else "changed"))
+            elif verbose >= 2:
+                parts.append(dim("witness ok" if ws["stored"] is not None else "witness none"))
         print("  ".join(parts))
+        if verbose >= 3 and ws["kind"] and ws["kind"] not in shown_witness:
+            shown_witness.add(ws["kind"])
+            paths = ws["paths"]
+            shown = ", ".join(paths[:3])
+            more = f" (+{len(paths) - 3} more)" if len(paths) > 3 else ""
+            print(dim(f"      witness: {shown}{more}"))
 
 
 def show_cache_status_json() -> None:
     """Machine-readable cache status with meta envelope."""
     import json as json_mod
     from brew_hop_search.display import _envelope
-    from brew_hop_search import brewver
+    from brew_hop_search import brewver, witness
     db_exists = DB_PATH.exists()
     have = brewver.brew_version()
     info = {
@@ -380,6 +442,12 @@ def show_cache_status_json() -> None:
                     "ttl_source": src_layer,
                     "ttl_env_var": f"BREW_HOP_SEARCH_{env_name}" if env_name else None,
                 }
+                ws = witness.state(db, kind)
+                if ws["kind"]:
+                    info["sources"][kind]["witness"] = {
+                        "stored": ws["stored"], "current": ws["current"],
+                        "changed": ws["changed"], "paths": ws["paths"],
+                    }
                 source_count += 1
     env = _envelope("cache-status", info, count=source_count)
     print(json_mod.dumps(env, indent=2))
@@ -777,6 +845,10 @@ def _main_inner(argv, _args_holder):
         sys.stdout.flush()
         if not args.quiet and not args.json and fmt is None:
             from brew_hop_search.display import trailing_refresh_status
+            _emit_cache_line(cache_entries(get_db(), ["formula", "cask",
+                                                      "installed_formula",
+                                                      "installed_cask"]),
+                             o_verbose)
             trailing_refresh_status(verbose=o_verbose)
         return
 
@@ -942,10 +1014,14 @@ def _main_inner(argv, _args_holder):
         total_matched += source_count if truncated else len(results)
         all_results.append((kind, results, age, source_count))
 
+    # Reminder facts for every source we just served from (stderr line /
+    # meta.cache). Computed once; cheap (a few stats, no subprocess).
+    cache_facts = cache_entries(db, [k for k, _, _ in search_sources])
+
     # ── output ──
     if args.json:
         output_json(all_results, query=query, limit=limit, offset=offset,
-                    mode=args.json)
+                    mode=args.json, cache=cache_facts)
         return
     if args.csv:
         output_csv(all_results)
@@ -1021,9 +1097,10 @@ def _main_inner(argv, _args_holder):
         for line in brewver.skipped_report():
             print(dim(f"  # [brew] {line}"), file=sys.stderr)
 
-    # Trailing status: hold the terminal until any in-flight bg refreshes
-    # complete (or ^C). TTY-only — pipelines exit immediately.
+    # Reminder line (what you were just served, and how to refresh it), then
+    # the trailing status for any bg refresh in flight. Both stderr.
     sys.stdout.flush()
+    _emit_cache_line(cache_facts, verbose)
     if not quiet:
         from brew_hop_search.display import trailing_refresh_status
         trailing_refresh_status(verbose=verbose)

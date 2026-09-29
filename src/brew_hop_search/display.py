@@ -33,6 +33,60 @@ def fmt_duration(seconds: float, sub_minute: bool = False) -> str:
     d, h = divmod(h, 24)
     return f"{d}d{h}h" if h else f"{d}d"
 
+def fmt_clock(seconds: float) -> str:
+    """Experimental clock style. Tiers chosen for what the eye needs:
+
+      < 5m    Ns / NmNs    45s, 4m10s  "0:00:45" reads as nothing
+      < 1d    h:mm:ss      0:40:12     exact, no unit letters to read
+      1–7d    Nd hh:mm     3d 14:05    morning-vs-evening still matters
+      1–8w    Nw[Nd]       2w3d
+      ≥ 60d   NM (30d)     3M
+      ≥ 365d  Ny[NM]       1y1M
+    """
+    if seconds == float("inf"):
+        return "never"
+    s = int(seconds)
+    if s < 300:
+        m, sec = divmod(s, 60)
+        return f"{m}m{sec}s" if m else f"{sec}s"
+    if s < 86400:
+        h, rem = divmod(s, 3600)
+        m, sec = divmod(rem, 60)
+        return f"{h}:{m:02d}:{sec:02d}"
+    d, rem = divmod(s, 86400)
+    if d < 7:
+        h, rem = divmod(rem, 3600)
+        return f"{d}d {h:02d}:{rem // 60:02d}"
+    if d < 60:
+        w, dd = divmod(d, 7)
+        return f"{w}w{dd}d" if dd else f"{w}w"
+    if d < 365:
+        return f"{d // 30}M"
+    y, dd = divmod(d, 365)
+    mo = dd // 30
+    return f"{y}y{mo}M" if mo else f"{y}y"
+
+
+def fmt_age(seconds: float, style: str | None = None) -> str:
+    """`40m old` (compact) or `-0:40:12` (clock)."""
+    style = style or _duration_style()
+    if style == "clock":
+        return f"-{fmt_clock(seconds)}"
+    return f"{fmt_duration(seconds)} old"
+
+
+def fmt_left(seconds: float, style: str | None = None) -> str:
+    """`5h19m left` (compact) or `+5:19:48` (clock)."""
+    style = style or _duration_style()
+    if style == "clock":
+        return f"+{fmt_clock(seconds)}"
+    return f"{fmt_duration(seconds, sub_minute=True)} left"
+
+
+def _duration_style() -> str:
+    from brew_hop_search.defaults import duration_style
+    return duration_style()
+
 # ── colour helpers ───────────────────────────────────────────────────────────
 
 USE_COLOR = sys.stdout.isatty()
@@ -133,6 +187,51 @@ def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 2.0,
             err = f" — {msg}" if msg else ""
             parts.append(f"{k} {red('✗')}{err} {secs:.1f}s")
     status_line(dim(f"  # [cache] {' · '.join(parts)}"), done=True)
+
+
+def render_cache_line(entries: list[dict], style: str | None = None) -> str:
+    """`# [cache] index 2h old, 4h left · installed 12m old, 48m left, changed  [--refresh]`
+
+    One clause per source the command just served from: how old the cache
+    is, how long until its TTL makes it stale (or `stale`), and `changed`
+    when a witness mtime says brew touched the source since we indexed.
+    Always ends with the `[--refresh]` reminder — the line exists so the
+    user never has to remember the flag. Uncolored; the caller dims it.
+
+    `style="clock"` (BREW_HOP_SEARCH_DURATION=clock) renders the clause as
+    `index updated -0:40:12 ttl +5:19:48 changed` — the signs carry age
+    vs remaining, the words say what each number is, so the commas go.
+    `ttl` because caching DNS servers taught everyone it counts down.
+    """
+    if not entries:
+        return ""
+    style = style or _duration_style()
+    clock = style == "clock"
+    sep = " " if clock else ", "
+    clauses = []
+    for e in entries:
+        age = int(e["age"])
+        left = int(e["ttl"]) - age
+        bits = [f"{e['label']} updated {fmt_age(age, style)}" if clock
+                else f"{e['label']} {fmt_age(age, style)}"]
+        if left <= 0:
+            bits.append("stale")
+        else:
+            bits.append(f"ttl {fmt_left(left, style)}" if clock else fmt_left(left, style))
+        if e.get("changed"):
+            bits.append("changed")
+        clauses.append(sep.join(bits))
+    return f"# [cache] {' · '.join(clauses)}  [--refresh]"
+
+
+def should_emit_cache_line(verbose: int, tty: bool | None = None) -> bool:
+    """-q: never. -v and up: always. Default: only when stderr is a TTY
+    (pipelines and scripts see results only)."""
+    if verbose <= 0:
+        return False
+    if verbose >= 2:
+        return True
+    return USE_COLOR_STDERR if tty is None else tty
 
 
 def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,
@@ -384,9 +483,25 @@ def _envelope(command: str, results, **meta_fields) -> dict:
     return out
 
 
+def cache_meta(entries: list[dict]) -> dict | None:
+    """The reminder line's facts, shaped for `meta.cache` in the envelope."""
+    if not entries:
+        return None
+    out = {}
+    for e in entries:
+        age = int(e["age"])
+        out[e["label"]] = {
+            "age_s": age,
+            "ttl_s": int(e["ttl"]),
+            "stale": age >= int(e["ttl"]),
+            "changed": bool(e.get("changed")),
+        }
+    return out
+
+
 def output_json(all_results: list[tuple], *,
                 query: str = "", limit: int = 20, offset: int = 0,
-                mode: str = "full") -> None:
+                mode: str = "full", cache: list[dict] | None = None) -> None:
     count = 0
     sources = []
     total = 0
@@ -412,6 +527,7 @@ def output_json(all_results: list[tuple], *,
         offset=offset if offset else None,
         total=total if total else None,
         count=count,
+        cache=cache_meta(cache or []),
     )
     print(json.dumps(env, indent=2))
 

@@ -16,7 +16,7 @@ def test_import_stamps_schema_version(tmp_path, monkeypatch):
     cache.import_to_db(db, "formula",
                        [{"name": "foo", "desc": "", "homepage": "", "version": "1", "raw": "{}"}],
                        ["name", "desc", "homepage", "version", "raw"], "name", ["name", "desc"])
-    assert cache.read_schema_version(db) == cache.SCHEMA_VERSION == 1
+    assert cache.read_schema_version(db) == cache.SCHEMA_VERSION == 2
 
 
 def test_pre_0_4_db_reads_as_none(tmp_path):
@@ -25,7 +25,7 @@ def test_pre_0_4_db_reads_as_none(tmp_path):
     assert cache.read_schema_version(db) is None
     # stamping adds the missing `value` column in place
     cache.stamp_schema_version(db)
-    assert cache.read_schema_version(db) == 1
+    assert cache.read_schema_version(db) == cache.SCHEMA_VERSION
     assert "value" in db["_meta"].columns_dict
 
 

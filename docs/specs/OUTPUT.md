@@ -9,8 +9,8 @@ machine-ready (quieter) or diagnostic (louder) output.
 | Level | Flag | Alias | Description |
 |-------|------|-------|-------------|
 | 0 | `-q` / `--quiet` | `--verbose=0` | Machine-ready: bare results, no headers, no source tags, no separators. Suitable for `grep`, `fzf`, scripts. |
-| 1 | *(default)* | `--verbose=1` | Human-optimal: section headers with counts + install hint, 2-space indent, `│` homepage separator. No source indicator column. Small hint line when no query. |
-| 2 | `-v` | `--verbose=2` | Adds: source indicator column (`f`/`c`/`t`/`i`), cache age + source summary line. |
+| 1 | *(default)* | `--verbose=1` | Human-optimal: section headers with counts + install hint, 2-space indent, `│` homepage separator. No source indicator column. Small hint line when no query. On a TTY, a stderr `# [cache] … [--refresh]` reminder line (age, time left, `changed`; see features/cache-flow.md § Reminder line). |
+| 2 | `-v` | `--verbose=2` | Adds: source indicator column (`f`/`c`/`t`/`i`), cache age + source summary line. The reminder line is printed even off-TTY. |
 | 3 | `-vv` | `--verbose=3` | Adds: per-source search stats (entry count, cache age per table). |
 
 `-v` stacks: bare `-v` = level 2, `-vv` = level 3.

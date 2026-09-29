@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -13,9 +14,13 @@ from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red
 
 from brew_hop_search.defaults import stale_local_seconds
+from brew_hop_search import witness
 
 
 def _brew_cache_api() -> Path:
+    env = os.environ.get("HOMEBREW_CACHE")
+    if env:
+        return Path(env) / "api"
     result = subprocess.run(["brew", "--cache"], capture_output=True, text=True)
     return Path(result.stdout.strip()) / "api"
 
@@ -39,6 +44,7 @@ def refresh(silent: bool = False) -> bool:
     if not silent:
         print(dim("  \u21bb indexing local brew cache \u2026"), file=sys.stderr)
     try:
+        wit = witness.witness_mtime("local")  # before reading, not after
         api_dir = _brew_cache_api()
         db = get_db()
 
@@ -75,7 +81,7 @@ def refresh(silent: bool = False) -> bool:
 
             import_to_db(db, table_name, rows,
                           list(rows[0].keys()) if rows else [],
-                          pk, fts_cols)
+                          pk, fts_cols, witness=wit)
 
         total = sum(1 for _ in (api_dir / "formula").glob("*.json")) + sum(1 for _ in (api_dir / "cask").glob("*.json")) if api_dir.is_dir() else 0
         if not silent:
@@ -87,15 +93,25 @@ def refresh(silent: bool = False) -> bool:
         return False
 
 
-def ensure_cache(force: bool = False, stale: int | None = None) -> bool:
+def background_refresh() -> None:
+    """Re-index brew's API cache in a detached subprocess. Returns immediately."""
+    from brew_hop_search.sources import _bg
+    _bg.background_refresh("local")
+
+
+def ensure_cache(force: bool = False, stale: int | None = None,
+                 allow_bg: bool = True) -> bool:
+    """Cache-first. Stale = TTL expired *or* a witness moved (brew wrote new
+    per-formula JSON under its api/ cache); either way re-index in the
+    background and serve what's on disk now."""
     if stale is None:
         stale = stale_local_seconds()
     db = get_db()
-    needs_sync = force or not table_exists(db, "local_formula")
-    if not needs_sync:
-        age = table_age(db, "local_formula")
-        if age > stale:
-            needs_sync = True
-    if needs_sync:
+    if force or not table_exists(db, "local_formula"):
         return refresh()
+    if table_age(db, "local_formula") > stale or witness.changed(db, "local_formula"):
+        if allow_bg:
+            background_refresh()
+        else:
+            return refresh()
     return True

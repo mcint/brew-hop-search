@@ -25,7 +25,9 @@ DB_PATH = CACHE_DIR / "brew-hop-search.db"
 # changes shape in a way a *reader other than this package* would notice —
 # the brew-hop-api read model pins this number, not our package version.
 # Written to `_meta` (kind "schema_version", value column) on every import.
-SCHEMA_VERSION = 1
+#   1  0.4.0-dev: initial stamp
+#   2  `_meta.witness` (FLOAT, nullable) — witness mtime at import (witness.py)
+SCHEMA_VERSION = 2
 REFRESH_LOG = CACHE_DIR / "refresh.log"
 _REFRESH_LOG_MAX = 1 * 1024 * 1024  # 1 MB before rotation
 
@@ -151,7 +153,8 @@ def save_raw_json(kind: str, data: list[dict]) -> None:
 
 
 def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
-                 columns: list[str], pk: str, fts_columns: list[str]) -> None:
+                 columns: list[str], pk: str, fts_columns: list[str],
+                 witness: float | None = None) -> None:
     """Import rows into the DB with FTS index.
 
     Args:
@@ -161,6 +164,10 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         columns: Column names to extract from each row dict.
         pk: Primary key column name.
         fts_columns: Columns to include in FTS5 index.
+        witness: Witness mtime sampled *before* the source was read (see
+            witness.py), or None for sources without one. Stamped into
+            `_meta.witness` so a later read can tell whether brew touched
+            the source since this import.
     """
     fts_name = f"{kind}_fts"
     if fts_name in db.table_names():
@@ -172,12 +179,35 @@ def import_to_db(db: sqlite_utils.Database, kind: str, data: list[dict],
         db[kind].insert_all(data, pk=pk)
         db[kind].enable_fts(fts_columns, tokenize="porter", create_triggers=True)
 
+    _ensure_witness_column(db)
     db["_meta"].insert(
-        {"kind": kind, "updated_at": time.time(), "count": len(data)},
+        {"kind": kind, "updated_at": time.time(), "count": len(data),
+         "witness": witness},
         pk="kind",
         replace=True,
     )
     stamp_schema_version(db)
+
+
+def _ensure_witness_column(db: sqlite_utils.Database) -> None:
+    """Add `_meta.witness` as FLOAT, explicitly.
+
+    Letting `alter=True` add it would type it from the first value seen —
+    and the first import is the remote index, whose witness is None, so
+    the column came out TEXT. A float in a TEXT column round-trips through
+    15 significant digits; mtimes have 16. Equal stamps then compared
+    unequal and every read refreshed. Typed up front, no such thing.
+    """
+    if "_meta" not in db.table_names():
+        db["_meta"].create({"kind": str, "updated_at": float, "count": int,
+                            "value": str, "witness": float}, pk="kind")
+        return
+    cols = db["_meta"].columns_dict
+    if "witness" not in cols:
+        db["_meta"].add_column("witness", float)
+    elif cols["witness"] is not float:
+        # A schema-2-dev DB that got the TEXT column: retype in place.
+        db["_meta"].transform(types={"witness": float})
 
 
 def stamp_schema_version(db: sqlite_utils.Database) -> None:

@@ -159,6 +159,55 @@ and the held-open terminal felt like a hang — defeating the
 "results-first" promise. The grace window keeps the fast-path UX
 (inline ✓ when the bg finishes quickly) without the worst-case hold.
 
+### Reminder line
+
+Every search, `-i` and `-O` ends with one stderr comment describing the
+caches it was just served from, and how to refresh them:
+
+```
+  # [cache] index 2h old, 4h left  [--refresh]
+  # [cache] installed 12m old, 48m left, changed · taps <1m old, 59m left  [--refresh]
+  # [cache] local 1d1h old, stale  [--refresh]
+```
+
+One clause per *source* (formula+cask collapse to `index`; `installed_*`
+to `installed`; `local_*` to `local`; `tap` to `taps`): age, then time
+until the TTL calls it stale (`stale` once it has), then `changed` when a
+witness mtime says brew touched the source since we indexed. The
+`[--refresh]` tail is the whole reason the line exists — nobody should
+have to remember the flag. Sources with no cache are omitted.
+
+Policy: default level prints it only when stderr is a TTY; `-v` and up
+always; `-q` never. Format flags (`--json`, `--csv`, …) never print it;
+`--json` carries the same facts as `meta.cache` (see ENVELOPE.md).
+
+It precedes the trailing `# [cache] updating …` line when a bg refresh is
+in flight: the reminder says what you got, the trailing line says what is
+happening about it.
+
+#### Duration style (experimental)
+
+`BREW_HOP_SEARCH_DURATION=clock` swaps the word form for a signed clock,
+in the reminder line and the `-C` age / fresh-for columns:
+
+```
+  # [cache] index updated -0:40:12 ttl +5:19:48 · installed updated -0:46:10 ttl +0:13:50 changed  [--refresh]
+  # [cache] taps updated -45s ttl +59m15s  [--refresh]
+  # [cache] local updated -1d 01:00 stale  [--refresh]
+```
+
+`updated -N` is age, `ttl +N` is time remaining — `ttl` because
+caching DNS servers taught everyone it counts down. The signs carry
+which is which, the words say what the number is, so the commas go.
+Tiers follow what the eye needs at each range: under five minutes
+`45s` / `4m10s` (a `0:00:45` reads as nothing); under a day `h:mm:ss`
+(exact, no unit letters to parse); one to seven days `3d 14:05`
+(morning-vs-evening still matters); then `2w3d`, `3M` (30-day
+months), `1y1M`. No `/6h` suffix: the TTL's configured value is `-C`'s
+business. Default stays `compact` (`40m old, 5h19m left`). A trial: if
+it earns its keep it graduates to config (`[display] duration =
+"clock"`) and a flag; if not, it goes.
+
 ### Differs/matches detection
 
 The "matches cache" / "may differ" determination compares the **set of
@@ -198,8 +247,46 @@ bg job finishes on its own.
 | State                        | -l / --offline | search default                        | --refresh             | --refresh=KIND        |
 |------------------------------|-----|---------------------------------------|-----------------------|-----------------------|
 | Fresh cache                  | use | use, no bg                            | sync refresh, then print | sync refresh selected; print |
-| Stale cache (age > stale)    | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
+| Stale cache (age > stale, **or witness moved**) | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
 | No cache                     | err | sync refresh, then print              | sync refresh, then print | sync refresh selected, then print |
+
+Every source takes the bg row: `index` (formulae.brew.sh), `installed`
+(`brew info`), `taps` (Library/Taps rescan) and `local` (brew's api/
+cache). The offline three share one detached runner
+(`sources/_bg.py`); `index` keeps its own because it carries a URL.
+
+## Witness mtimes
+
+A TTL guesses. Directory mtimes know. Each offline source names a few
+*witness paths* that brew touches whenever it mutates that source:
+
+| source    | witness paths                                              | moved by |
+|-----------|------------------------------------------------------------|----------|
+| installed | `<prefix>/opt`, `Cellar`, `Caskroom`                       | install, upgrade, remove (all relink under `opt/`); casks land in `Caskroom/` |
+| taps      | `Library/Taps`, each `<user>/<tap>` dir, its `.git/FETCH_HEAD` | `brew tap`, `untap` (parents); `brew update` (FETCH_HEAD) |
+| local     | `$(brew --cache)/api`, `api/formula`, `api/cask`           | brew writing per-formula JSON on `brew info`/`install` |
+| index     | none — remote                                              | TTL only |
+
+At index time the source samples the max mtime over its witnesses —
+*before* it reads anything, so a change that lands during a slow `brew
+info` shows up as moved on the next read — and stamps it into
+`_meta.witness` (schema 2). Every later read stats the same paths: a
+few dozen `stat` calls, no subprocess. Roots come from
+`HOMEBREW_PREFIX` / `HOMEBREW_REPOSITORY` / `HOMEBREW_CACHE` when set,
+else from where the `brew` binary lives — asking brew would cost more
+than the check saves.
+
+If the live max is newer than the stamp, the source is stale: it takes
+the **background** row of the matrix above, never the blocking one. TTL
+stays as the fallback for whatever a witness can't see (a hand-edited
+`.rb` inside an existing tap moves the file, not the tap dir).
+
+Unknown is not changed. A NULL stamp (pre-schema-2 DB, no discoverable
+roots) or a vanished witness reads as "no change", so an upgrade never
+thrashes; the first refresh after upgrading writes the stamp.
+
+`-C` shows the witness state per source; `-C -v` names the paths. The
+reminder line (next section) says `changed` when a witness moved.
 
 `--offline` + any `--refresh` form is rejected at parse time
 (`--offline and --refresh conflict. Drop one.`).
@@ -251,6 +338,22 @@ At `-vv`, add the next-refresh ETA:
 ```
   formula  8306  1h12m ago  ttl 6h (default)  fresh for 4h47m  fts  30MB json
 ```
+
+Witness state (§ Witness mtimes) rides the same row for the offline
+sources. Default flags only a moved witness; `-v` always names the
+state; `-vv` lists the witness paths once per kind (first three, then
+`(+N more)`):
+
+```
+  installed:f  460  1h11m ago  ttl 1h  changed                    # default
+  installed:f  460  1h11m ago  ttl 1h (default)  witness changed  # -v
+  taps         912  3m ago     ttl 1h (default)  witness ok
+  local:f      130  2d ago     ttl 1h (default)  witness none     # pre-schema-2 stamp
+      witness: /opt/homebrew/opt, /opt/homebrew/Cellar, /opt/homebrew/Caskroom
+```
+
+`-C --json` adds `"witness": {stored, current, changed, paths}` to each
+offline source; the remote index has no key.
 
 ## Examples
 

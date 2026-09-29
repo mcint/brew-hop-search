@@ -9,6 +9,14 @@
     "limit": 20,
     "total": 5,
     "count": 1,
+    "cache": {
+      "index": {
+        "age_s": "NORMALIZED",
+        "ttl_s": 21600,
+        "stale": false,
+        "changed": false
+      }
+    },
     "date": "NORMALIZED"
   },
   "results": {
