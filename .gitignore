@@ -11,3 +11,5 @@ src/brew_hop_search/data/
 # bv (beads viewer) local config and caches
 .bv/
 .beads/.bv.lock
+.superpowers/
+.beads/embeddeddolt/
