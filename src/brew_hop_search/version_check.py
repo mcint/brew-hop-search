@@ -56,6 +56,18 @@ def _parse_version(v: str):
         return None
 
 
+def fetch_latest(timeout: float = 5) -> str:
+    """Return the latest version string on PyPI, or "" if unknown.
+
+    Raises on network/parse errors; callers decide how loud to be.
+    """
+    from brew_hop_search import user_agent
+    req = Request(PYPI_URL, headers={"User-Agent": user_agent()})
+    with urlopen(req, timeout=timeout) as r:
+        data = json.loads(r.read())
+    return data.get("info", {}).get("version", "") or ""
+
+
 def check_if_due() -> None:
     """Check PyPI for a newer version if enough time has passed.
 
@@ -66,12 +78,7 @@ def check_if_due() -> None:
         if _last_check_age() < CHECK_INTERVAL:
             return
 
-        from brew_hop_search import user_agent
-        req = Request(PYPI_URL, headers={"User-Agent": user_agent()})
-        with urlopen(req, timeout=5) as r:
-            data = json.loads(r.read())
-
-        latest = data.get("info", {}).get("version", "")
+        latest = fetch_latest(timeout=5)
         if not latest:
             return
 

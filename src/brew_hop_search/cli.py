@@ -375,18 +375,18 @@ def _show_version(level: int) -> None:
                     print(f"  {dim(line)}")
         except Exception:
             pass
-        # Live PyPI version check
+        # Live PyPI version check. -VV means "tell me the truth, now": no
+        # cache short-circuit (unlike check_if_due), a longer timeout since
+        # the user is waiting, and a write-back so the background check
+        # stays quiet for the next interval. (gh #1)
         print()
         try:
-            from brew_hop_search.version_check import _parse_version
-            from urllib.request import Request, urlopen
-            import json as json_mod
-            pypi_json = "https://pypi.org/pypi/brew-hop-search/json"
-            req = Request(pypi_json, headers={"User-Agent": user_agent()})
-            with urlopen(req, timeout=5) as r:
-                data = json_mod.loads(r.read())
-            latest = data.get("info", {}).get("version", "")
+            from brew_hop_search.version_check import (
+                _parse_version, _record_check, fetch_latest,
+            )
+            latest = fetch_latest(timeout=15)
             if latest:
+                _record_check()
                 cur_v = _parse_version(v)
                 latest_v = _parse_version(latest)
                 if cur_v and latest_v and latest_v > cur_v:

@@ -133,3 +133,55 @@ def test_commit_count_zero_when_no_git_no_build_info(monkeypatch):
 
     from brew_hop_search import _commit_count_since_tag
     assert _commit_count_since_tag() == 0
+
+
+# ── -VV always fetches fresh from PyPI (gh issue #1) ────────────────────────
+
+class _FakeResp:
+    def __init__(self, payload: bytes):
+        self._p = payload
+    def read(self):
+        return self._p
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return False
+
+
+def _fake_urlopen(calls):
+    def urlopen(req, timeout=None):
+        calls.append({"url": req.full_url, "timeout": timeout})
+        return _FakeResp(b'{"info": {"version": "0.3.7"}}')
+    return urlopen
+
+
+def _seed_recent_check(age_s: float) -> None:
+    import time
+    from brew_hop_search.cache import get_db
+    from brew_hop_search.version_check import META_KEY
+    get_db()["_meta"].insert(
+        {"kind": META_KEY, "updated_at": time.time() - age_s, "count": 0},
+        pk="kind", replace=True)
+
+
+def test_VV_fetches_pypi_even_when_cached_check_is_fresh(monkeypatch, tmp_path, capsys):
+    """-VV must hit PyPI on every call, ignoring the 4h background-check cache,
+    use a longer timeout than the background check, and write the check
+    time back so the background path stays quiet afterwards."""
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "x.db"))
+    from brew_hop_search import version_check, cli
+    _seed_recent_check(age_s=100)  # well inside CHECK_INTERVAL
+    calls = []
+    monkeypatch.setattr(version_check, "urlopen", _fake_urlopen(calls))
+
+    # Control: the background path respects the cache and stays offline.
+    version_check.check_if_due()
+    assert calls == []
+
+    cli._show_version(2)
+    assert len(calls) == 1, "-VV did not fetch from PyPI"
+    assert calls[0]["url"] == version_check.PYPI_URL
+    assert calls[0]["timeout"] >= 10
+    assert version_check._last_check_age() < 1.0, "fresh result not written back"
+    out = capsys.readouterr().out
+    assert "pypi" in out and "0.3.7" in out
