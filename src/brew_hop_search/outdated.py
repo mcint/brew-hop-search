@@ -119,6 +119,22 @@ def collect_outdated_fast() -> dict:
     return {"formulae": outdated_formulae, "casks": outdated_casks}
 
 
+def filter_by_terms(data: dict, query: str) -> dict:
+    """Keep only records whose name matches `query` (search grammar, AND).
+
+    Name-only, no FTS, no ranking: `-O python` is a narrowing, not a search.
+    Empty query returns `data` unchanged.
+    """
+    if not query.strip():
+        return data
+    from dataclasses import replace
+    from brew_hop_search.search import parse_query
+    terms = [replace(t, field="name") for t in parse_query(query)]
+    def keep(rec: dict) -> bool:
+        return all(t.matches(rec) for t in terms)
+    return {k: [r for r in v if keep(r)] for k, v in data.items()}
+
+
 def collect_outdated_brew(silent: bool = False) -> dict:
     """Collect outdated via `brew outdated --json=v2` (slow, authoritative)."""
     if not silent:

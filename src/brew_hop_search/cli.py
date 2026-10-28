@@ -454,7 +454,7 @@ def _main_inner(argv, _args_holder):
     info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
                       help="cache status")
     info.add_argument("-O", "--outdated", action="store_true",
-                      help="outdated packages")
+                      help="outdated packages (terms filter by name)")
     info.add_argument("--brew-verify", action="store_true",
                       help="use brew for -O (slower, authoritative)")
     info.add_argument("-H", "--history", action="store_true",
@@ -622,8 +622,9 @@ def _main_inner(argv, _args_holder):
     if args.outdated:
         from brew_hop_search.outdated import (
             collect_outdated_fast, collect_outdated_brew,
-            display_outdated, _filter_kinds,
+            display_outdated, _filter_kinds, filter_by_terms,
         )
+        o_query = " ".join(args.query) if args.query else ""
         # Verbosity: same scale as search (0=quiet, 1=default, 2=-v, 3=-vv).
         if args.quiet:
             o_verbose = 0
@@ -656,13 +657,14 @@ def _main_inner(argv, _args_holder):
             installed.ensure_cache(force=force_refresh_for(args, "installed"))
 
         if args.brew_verify:
-            fast_data = collect_outdated_fast()
-            brew_data = collect_outdated_brew(silent=silent_progress)
+            fast_data = filter_by_terms(collect_outdated_fast(), o_query)
+            brew_data = filter_by_terms(
+                collect_outdated_brew(silent=silent_progress), o_query)
             display_outdated(fast_data, kinds=kinds, verbose=o_verbose,
                              as_json=args.json, fmt=fmt, diff_data=brew_data)
         else:
             from brew_hop_search.outdated import collect_outdated
-            data = collect_outdated(silent=silent_progress)
+            data = filter_by_terms(collect_outdated(silent=silent_progress), o_query)
             display_outdated(data, kinds=kinds, verbose=o_verbose,
                              as_json=args.json, fmt=fmt)
 

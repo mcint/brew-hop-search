@@ -21,7 +21,7 @@ info:
   --man                 offline man page (same as --help=man)
   -V, --version         version (-VV: commits + PyPI)
   -C, --cache-status    cache status
-  -O, --outdated        outdated packages
+  -O, --outdated        outdated packages (terms filter by name)
   --brew-verify         use brew for -O (slower, authoritative)
   -H, --history         version history for rollback
 

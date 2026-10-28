@@ -14,6 +14,9 @@ brew-hop-search [query ...]
 - Prefix matching: `pyth` matches `python`
 - No query + no source flag = show help hints
 - No query + source flag (e.g. `-i`) = list all from that source
+- With `-O`, terms filter the outdated list by name using the same
+  grammar (`^prefix`, `suffix$`, `!negate`), AND-matched; no FTS, no
+  ranking. `bhs -O python` shows only outdated packages matching python.
 
 ## Sources
 
