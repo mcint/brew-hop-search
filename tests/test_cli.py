@@ -271,3 +271,30 @@ end
     assert result["desc"] == "A test application"
     assert result["homepage"] == "https://example.com"
     assert result["tap"] == "test/tap"
+
+
+def test_cache_status_columns_align(tmp_path):
+    """-C rows align their count/age/ttl columns regardless of label width."""
+    import sqlite_utils, time, os as _os
+    db_path = tmp_path / "x.db"
+    db = sqlite_utils.Database(db_path)
+    row = {"name": "foo", "desc": "", "homepage": "", "version": "1.0", "raw": "{}"}
+    db["formula"].insert_all([row], pk="name")
+    db["formula"].enable_fts(["name", "desc"], tokenize="porter")
+    db["installed_formula"].insert_all([row] * 1, pk="name")
+    now = time.time()
+    db["_meta"].insert_all([
+        {"kind": "formula", "updated_at": now - 5 * 3600, "count": 1},
+        {"kind": "installed_formula", "updated_at": now - 60, "count": 1},
+    ], pk="kind", replace=True)
+    env = {**_os.environ, "BREW_HOP_SEARCH_DB": str(db_path)}
+    r = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "-C"],
+        capture_output=True, text=True, env=env, timeout=10,
+    )
+    out = re.sub(r"\033\[[0-9;]*m", "", r.stdout)
+    rows = [ln for ln in out.splitlines() if ln.startswith("  formula") or ln.startswith("  installed:f")]
+    assert len(rows) == 2, out
+    for col in ("ago", "ttl "):
+        positions = {ln.index(col) for ln in rows}
+        assert len(positions) == 1, f"{col!r} drifts across rows:\n{out}"

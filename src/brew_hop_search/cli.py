@@ -22,6 +22,7 @@ from brew_hop_search.display import (
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, output_csv, output_tsv, output_table,
     output_sql_insert, output_multi, fmt_duration, status_line,
+    visible_len, pad_visible,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
@@ -229,6 +230,10 @@ def show_cache_status(verbose: int = 1) -> None:
         "local_cask": "local:c",
     }
 
+    # Collect rows as cells, then pad by visible width so columns align
+    # regardless of label length. Count and age are right-aligned; the
+    # rest left. Trailing cells (fts / json) are ragged on purpose.
+    rows: list[list[str]] = []
     for kind, color_fn, check_fts in sources:
         if not table_exists(db, kind):
             continue
@@ -243,25 +248,29 @@ def show_cache_status(verbose: int = 1) -> None:
                 ttl_str += f" {dim(f'(env: BREW_HOP_SEARCH_{env_name})')}"
             else:
                 ttl_str += f" {dim('(default)')}"
-        parts = [
-            f"  {label}",
-            f"{count:>6}",
-            f"{dim(age_str + ' ago')}",
-            dim(ttl_str),
-        ]
+        cells = [label, str(count), dim(age_str + " ago"), dim(ttl_str)]
         if verbose >= 3 and ttl_s > 0:
             remaining = max(0, ttl_s - int(age))
-            parts.append(dim(f"fresh for {fmt_duration(remaining, sub_minute=True)}")
+            cells.append(dim(f"fresh for {fmt_duration(remaining, sub_minute=True)}")
                          if remaining else dim("stale"))
         if check_fts:
             fts_name = f"{kind}_fts"
             has_fts = fts_name in db.table_names()
-            parts.append(green("fts") if has_fts else red("no fts"))
+            cells.append(green("fts") if has_fts else red("no fts"))
             jp = json_path(kind)
             if jp.exists():
                 jp_mb = jp.stat().st_size / (1024 * 1024)
-                parts.append(dim(f"{jp_mb:.0f}MB json"))
-        print("  ".join(parts))
+                cells.append(dim(f"{jp_mb:.0f}MB json"))
+        rows.append(cells)
+
+    right_cols = {1, 2}  # count, age
+    ncols = max((len(r) for r in rows), default=0)
+    widths = [max((visible_len(r[i]) for r in rows if i < len(r)), default=0)
+              for i in range(ncols)]
+    for cells in rows:
+        padded = [pad_visible(c, widths[i], right=i in right_cols)
+                  for i, c in enumerate(cells)]
+        print("  " + "  ".join(padded).rstrip())
 
 
 def show_cache_status_json() -> None:
