@@ -21,6 +21,9 @@ brew tap mcint/brew-hop-search
 brew install brew-hop-search
 ```
 
+Either install puts three names on PATH: `brew-hop-search`, the short
+alias `brewhs`, and `brew-hs`, which brew runs as `brew hs python`.
+
 ## Examples
 
 ```sh
