@@ -9,7 +9,7 @@ __version__ = (Path(__file__).parent / "VERSION").read_text().strip()
 
 PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
-BREW_TAP_URL = ""  # set when a tap is published
+BREW_TAP_URL = "https://github.com/mcint/homebrew-tap"  # brew tap mcint/tap
 
 
 def user_agent() -> str:
