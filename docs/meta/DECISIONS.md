@@ -92,7 +92,7 @@ untagged release is" (INTENT § Reversed).
 ## 8. README as a release artifact (`ccdd8c4`, 2026-07-26)
 
 Context: README examples drifted from live output between releases.
-Decision: regenerate README from `README.md.template` with live command
+Decision: regenerate README from `release/README.md.template` with live command
 output at the tag step, under `env -i`, as part of `release.sh`.
 Consequence: the README on `main` shows exactly what the tagged version
 prints. The build must run in a clean environment so the owner's config
@@ -118,7 +118,7 @@ all, ever."
 Decision: declaring an official version (pushing `vX.Y.Z`, GitHub
 release, PyPI upload, moving `main`) is the owner's act, after they
 review the tests. Agents prepare on `dev` and stop at "ready to tag".
-Agents may push `dev`, `feat/*`, `-rcN` tags and `proposed/vX.Y.Z`
+Agents may push `dev`, `feat/*`, `-rcN` tags and `tag-draft/vX.Y.Z`
 pointers. `main` stays the default branch, protected so only the owner
 pushes it. CI tests all branches; the release workflow tests before it
 publishes.

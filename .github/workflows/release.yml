@@ -3,7 +3,7 @@ name: Release
 # Fires on official tags (vX.Y.Z) and candidates (vX.Y.Z-rcN). Tests run
 # first; nothing is built or published from a tag that fails the suite.
 # Candidates publish to TestPyPI; official tags to PyPI. Pushing a vX.Y.Z
-# tag is the owner's act (docs/meta/RELEASING.md). proposed/* tags match
+# tag is the owner's act (docs/meta/RELEASING.md). tag-draft/* tags match
 # nothing here on purpose.
 
 on:

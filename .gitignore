@@ -8,6 +8,9 @@ sessions/
 src/brew_hop_search/_build_info.py
 src/brew_hop_search/data/
 
+# Issue tracking lives on branch chore/beads (checked out at
+# .claude/worktrees/beads); each clone keeps an untracked .beads/redirect
+# pointing there. See agents/beads-viewer.md.
+.beads/
 # bv (beads viewer) local config and caches
 .bv/
-.beads/.bv.lock

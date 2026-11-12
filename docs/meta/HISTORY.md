@@ -59,7 +59,7 @@ pypi.org. The `build` and `github-release` jobs succeed, which is why
 GitHub releases exist. Second, the PyPI column trails the GitHub release
 by 3 to 12 minutes on every version that was uploaded. That gap is the
 owner watching the Actions run fail and then running `make publish` by
-hand, exactly as DEVELOPMENT.md step 7 says. CI has never published
+hand, exactly as release/README.md step 7 says. CI has never published
 anything.
 
 ## Incident 1: the quadruple tag (2026-04-19)

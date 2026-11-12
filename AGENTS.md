@@ -22,9 +22,9 @@ reasoning and history live in `docs/meta/`.
   `chore/2026-11-12/dev-rebuild`). Types: feat, fix, docs, chore, ci,
   test, refactor, spec. `draft/*` is local-only; `main` and `dev` are the
   only bare names.
-- Pre-release or agent-marked tags may be pushed (`-rcN`; `proposed/…`
+- Pre-release or agent-marked tags may be pushed (`-rcN`; `tag-draft/…`
   once the convention is settled). Plain `vX.Y.Z` may not.
-- Never hand-run a step that `scripts/release.sh` deliberately skipped.
+- Never hand-run a step that `release/release.sh` deliberately skipped.
   `--skip-publish` also skips ff-main and the post-bump, on purpose.
 - PyPI publishing is local (`make publish`) and the owner's. The Actions
   `pypi-publish` job has never succeeded (bead bhs-59v). Do not route
@@ -59,5 +59,8 @@ reasoning and history live in `docs/meta/`.
 ## Issue tracking
 
 - `br` (beads) is the tracker; `bd` is retired. After changes:
-  `br sync --flush-only`, then `git add .beads/ && git commit`. Full
-  workflow: `AGENTS.beads_viewer.md`.
+  `br sync --flush-only`, then commit in the beads worktree
+  (`.claude/worktrees/beads`, branch `chore/beads`). `.beads/` is not in
+  this tree: each clone keeps an untracked `.beads/redirect` containing
+  `../.claude/worktrees/beads/.beads`. Full
+  workflow: `agents/beads-viewer.md`.

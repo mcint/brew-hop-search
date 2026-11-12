@@ -89,7 +89,7 @@ and R8 to R11, R15 and R16. RELEASING.md is the procedure.
 | R8 | A tag ships a green suite or it is not a tag; `--no-verify` is a debt due at the next release. | Tests gate deploys. | intent principles.md; release.sh step 1 | C |
 | R9 | Release from a worktree branch, never the owner's checkout; a release is a ref update (`git fetch . x:main`), not a checkout. | The owner's tree is theirs. | git-coord ff-without-checkout.md | C |
 | R10 | Linear history on `main`; fast-forward or rebase, never merge commits. | `git log main` reads as a release list. | git-coord linear-history.md | C |
-| R11 | Pre-release (`-rcN`) and visibly agent-marked (`proposed/`) tags may be pushed; official tags may not. | The marker in the name is what makes it safe. | memory 2026-11-08; BRANCH-MODEL.md | C |
+| R11 | Pre-release (`-rcN`) and visibly agent-marked (`tag-draft/`) tags may be pushed; official tags may not. | The marker in the name is what makes it safe. | memory 2026-11-08; BRANCH-MODEL.md | C |
 | R12 | README is a release artifact: regenerated from live output at the tag step under a clean env. | The README shows what the tag does, not what dev did. | `ccdd8c4`; scripts/build-readme.sh | W |
 | R13 | The tag message carries the commit list; CHANGELOG.md is the curated narrative. | Two audiences, two documents, one source. | CHANGELOG header; `bcfd471` | W + C |
 | R14 | PEP 440; minor for widened or renamed surface, patch for fixes, major only after two minors with zero renames. | A rename is a minor, even with aliases. | `ad892fc`; strategy § 2 | W (branch) |
@@ -107,7 +107,7 @@ and R8 to R11, R15 and R16. RELEASING.md is the procedure.
 | P4 | Tests never spawn brew; `BREW_HOP_SEARCH_DB` isolates; `pytest -vv` shows the expected output. | The suite runs anywhere, and documents itself. | sessions/2026-04-07; AUDIENCES § Developers | W |
 | P5 | Commit early, often, scoped by concern; the body says why; Conventional Commits with scope. | Easier to squash than to separate. | memory 2026-04-09; log from `ce34649` | C + P |
 | P6 | Never amend without asking; new commits; proportionate messages. | Shared history is shared. | memory | C |
-| P7 | Pre-commit runs the suite; `--no-verify` only for re-scoping a tree that was just tested. | Every commit is green or says why not. | hooks/pre-commit; memory | W + C |
+| P7 | Pre-commit runs the suite; `--no-verify` only for re-scoping a tree that was just tested. | Every commit is green or says why not. | release/hooks/pre-commit; memory | W + C |
 | P8 | `br` (beads) is the tracker; `.beads/` is tracked by the owner's choice; `br sync --flush-only` then a manual commit; `bd` is retired. | Issues close to the code. | AGENTS.md; `4888712` | W |
 | P9 | `feature-requests.txt` and `sessions/` are the local inbox and record; both untracked; dated one-liners are data about the owner's spelling. | The inbox is private; the spelling is signal. | sessions/2026-09-13, 09-28 | C |
 | P10 | Research traces persist under `docs/research/` with frontmatter and a tldr; read `head -15` first. | Never fully reused is fine; the trace is the point. | docs/research/* (branch) | W (branch) |
@@ -125,4 +125,4 @@ and R8 to R11, R15 and R16. RELEASING.md is the procedure.
 | A5 | Never move the owner's checkout; work in `.claude/worktrees/*`. | The owner's tree is theirs. | INTENT § Decided | C |
 | A6 | Check `sessions/*request*` on status queries and diff against beads. | The inbox is the ground truth for "what's pending". | memory | C |
 | A7 | Pull-discovery of cross-project learnings, not push. | Check when relevant, not every session. | global CLAUDE.md | C |
-| A8 | The RULE 0 and no-destructive-git rules in AGENTS.beads_viewer.md are upstream text copied verbatim; the project has neither endorsed nor rejected them. | Know which rules are ours. | AGENTS.beads_viewer.md line 1 | W (unowned) |
+| A8 | The RULE 0 and no-destructive-git rules in agents/beads-viewer.md are upstream text copied verbatim; the project has neither endorsed nor rejected them. | Know which rules are ours. | agents/beads-viewer.md line 1 | W (unowned) |
