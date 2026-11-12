@@ -15,7 +15,13 @@ reasoning and history live in `docs/meta/`.
 - `main` holds only tagged releases, fast-forwarded by the owner. Agents
   never push it.
 - `dev` is the integration lane. Agents may push fast-forward commits and
-  `feat/*` branches once the suite passes.
+  work branches once the suite passes.
+- Branch names follow Conventional Commits types: `<type>/<slug>`, with
+  an optional grouping segment `<type>/<group>/<slug>` for a session or a
+  theme (`feat/brew-hs`, `fix/foreign-git-tree`, `docs/meta`,
+  `chore/2026-11-12/dev-rebuild`). Types: feat, fix, docs, chore, ci,
+  test, refactor, spec. `draft/*` is local-only; `main` and `dev` are the
+  only bare names.
 - Pre-release or agent-marked tags may be pushed (`-rcN`; `proposed/…`
   once the convention is settled). Plain `vX.Y.Z` may not.
 - Never hand-run a step that `scripts/release.sh` deliberately skipped.

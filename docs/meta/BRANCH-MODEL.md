@@ -5,7 +5,7 @@ kind: spec
 tldr: >
   Three kinds of ref. `main` is the default branch and holds exactly the
   tagged releases, moved only by the owner. `dev` is where the block for
-  the next version forms. Agents may push `feat/*`, `-rcN` and `proposed/*`
+  the next version forms. Agents may push `<type>/<slug>` branches, `-rcN` and `proposed/*`
   tags. CI runs the suite on every branch and PR; the release workflow
   tests before it publishes. Not full git-flow: no `release/*` branches,
   no `hotfix/*` until a shipped version needs one.
@@ -24,11 +24,25 @@ but something more this direction."
 |---|---|---|---|
 | `main` | one commit per release, each tagged `vX.Y.Z`; fast-forward from `dev` at release time | the owner | never |
 | `dev` | the forming block for the next version; always green | owner and agents | yes, fast-forward only |
-| `feat/<name>` | one feature or spec; PR into `dev` | agents and owner | yes |
+| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; PR or fast-forward into `dev` | agents and owner | yes |
 | `vX.Y.Z` tag | official version | the owner, after reviewing the test run on the release commit | never |
 | `vX.Y.Z-rcN` tag | candidate for review; builds, publishes to TestPyPI only | agents or owner | yes |
 | `proposed/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
 | `draft/*` | local intent, scratch | anyone | hook-refused |
+
+## Branch names
+
+Decided 2026-11-12: branch names hew to Conventional Commits. The first
+segment is the type that the branch's squashed commit would carry: `feat`,
+`fix`, `docs`, `chore`, `ci`, `test`, `refactor`, `spec`. The last segment
+is a short kebab-case slug. An optional middle segment groups branches by
+session, date or theme, where taste wants it: `feat/brew-hs`,
+`fix/foreign-git-tree`, `docs/meta`, `chore/2026-11-12/dev-rebuild`,
+`feat/vocab/offline-adverb`. The type is the contract; the group is free.
+`main` and `dev` are the only bare names; `draft/*` is local-only
+(hook-refused on push); `proposed/` and `v` are tag namespaces, not
+branches. Branches that predate the rule (`dev-clean2`,
+`backlog-0.4-clean`, `statusline-history`) keep their names until deleted.
 
 ## Default branch
 
@@ -48,7 +62,7 @@ link to `main`, the CI trigger, and `git fetch . dev:main` would change.
 
 - `ci.yml`: on push to any branch and on PR. `uv sync`, suite, smoke test,
   matrix 3.9/3.12/3.13. Today it runs only on `main` and PRs, so `dev` and
-  `feat/*` pushes go untested; the trigger widens to all branches.
+  work-branch pushes go untested; the trigger widens to all branches.
 - `release.yml`: on `v*` tags only. Job order: test (same matrix, at the
   tag), then build, then publish. `-rc*` tags publish to TestPyPI; plain
   `vX.Y.Z` to PyPI via trusted publishing once configured (bead bhs-59v).
