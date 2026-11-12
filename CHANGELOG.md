@@ -33,6 +33,10 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
+- **`-i` crashed on installed casks** (`TypeError: '<' not supported
+  between instances of 'str' and 'list'`) when one cask had an empty
+  display-name list and another did not; the tie-break sort key now
+  reduces every record to one string.
 
 ### Changed
 
