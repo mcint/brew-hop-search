@@ -7,7 +7,7 @@ Built on SQLite + FTS5 for instant local search with smart caching.
 
 [GitHub](https://github.com/mcint/brew-hop-search) ·
 [PyPI](https://pypi.org/project/brew-hop-search/) ·
-[Brew Tap](https://github.com/mcint/homebrew-brew-hop-search/blob/main/Formula/brew-hop-search.rb)
+[Brew Tap](https://github.com/mcint/homebrew-tap/blob/main/Formula/brew-hop-search.rb)
 
 ## Install
 
@@ -17,7 +17,7 @@ uv tool install brew-hop-search     # or: pip install brew-hop-search
 uvx brew-hop-search python          # one-shot without install
 
 # Homebrew tap
-brew tap mcint/brew-hop-search
+brew tap mcint/tap
 brew install brew-hop-search
 ```
 
