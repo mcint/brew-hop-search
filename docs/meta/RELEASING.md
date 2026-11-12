@@ -22,7 +22,7 @@ come from.
 | Step | Actor |
 |---|---|
 | Write the changelog narrative, promote VERSION, run the suite, regenerate README, build `dist/`, create a local tag | agent or owner |
-| Push `dev` and `feat/*` after the suite passes | agent or owner |
+| Push `dev` and `<type>/<slug>` work branches after the suite passes | agent or owner |
 | Push an `-rcN` or `proposed/vX.Y.Z` tag | agent or owner |
 | Review the test run on the release commit | owner |
 | Push `vX.Y.Z` | owner only |
@@ -38,7 +38,7 @@ Agents stop before the `git push origin vX.Y.Z` line, always.
 |---|---|---|---|
 | `main` | one commit per release, each tagged `vX.Y.Z`; fast-forwarded from `dev` | the owner | never |
 | `dev` | the forming block for the next version; always green | owner and agents | yes, fast-forward only |
-| `feat/<name>` | one feature or spec; merges into `dev` | agents and owner | yes |
+| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; merges into `dev` (BRANCH-MODEL.md § Branch names) | agents and owner | yes |
 | `vX.Y.Z` tag | official version | the owner, after reviewing the test run | never |
 | `vX.Y.Z-rcN` tag | candidate for review; builds, publishes to TestPyPI only | agents or owner | yes |
 | `proposed/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
