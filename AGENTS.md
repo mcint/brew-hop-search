@@ -1,45 +1,57 @@
 # Agent Instructions
 
-This project uses **br** (beads_rust) for issue tracking. See the Quick Reference below and `AGENTS.beads_viewer.md` for the full br/bv workflow.
+Rules for any agent working in this repository. Short on purpose; the
+reasoning and history live in `docs/meta/`.
 
-**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
+## Releases and branches (the owner's acts)
 
-## Quick Reference
+- Declaring a version is the owner's act. Never create or push a
+  `vX.Y.Z` tag, never `gh release`, never `uv publish`, never move `main`.
+- Stop at "ready to tag": changelog written, VERSION promoted, suite
+  green, `dist/` built, and the exact commands printed for the owner.
+- Before any outward act (push, tag, release, PR, force-move, delete), ask
+  one closed question with a stated default and wait. A mood ("feels like
+  time for a release") is not an authorization.
+- `main` holds only tagged releases, fast-forwarded by the owner. Agents
+  never push it.
+- `dev` is the integration lane. Agents may push fast-forward commits and
+  `feat/*` branches once the suite passes.
+- Pre-release or agent-marked tags may be pushed (`-rcN`; `proposed/…`
+  once the convention is settled). Plain `vX.Y.Z` may not.
+- Never hand-run a step that `scripts/release.sh` deliberately skipped.
+  `--skip-publish` also skips ff-main and the post-bump, on purpose.
+- PyPI publishing is local (`make publish`) and the owner's. The Actions
+  `pypi-publish` job has never succeeded (bead bhs-59v). Do not route
+  around it.
 
-```bash
-br ready              # Find available work
-br show <id>          # View issue details
-br update <id> --status in_progress  # Claim work
-br close <id>         # Complete work
-br sync --flush-only  # Export to JSONL (no git operations)
-git add .beads/
-git commit -m "sync beads"
-```
+## Working tree
 
-## Landing the Plane (Session Completion)
+- Work in `.claude/worktrees/*`. Never check out or move the owner's
+  working tree.
+- Coordinate locally first. The `draft/intent` worktree
+  (`.claude/worktrees/intent`) holds the branch map, decisions and parked
+  questions. `draft/*` branches never push.
+- `feature-requests.txt` and `sessions/` are the local inbox and record
+  (gitignored). Read the newest `sessions/*request*` before answering
+  "what's pending".
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+## Code, specs, tests, commits
 
-**MANDATORY WORKFLOW:**
+- Spec first or alongside, never last. A new feature ships with a new
+  red-green snapshot test in the same commit.
+- Conventional Commits with scope; small scoped commits; never amend or
+  rebase shared history without asking.
+- Pin the dev interpreter with `.python-version`; the CI matrix, not the
+  pin, sets `requires-python`.
+- Lowercase flags are sources and adverbs, UPPERCASE are verbs and info.
+  Renames keep a hidden alias with a stderr hint for one release.
+- `-v` adds provenance, `-vv` what the tool did, `-vvv` raw material;
+  always to stderr; machine formats ignore the ladder.
+- Default output is clean and never calls `brew`; details and
+  subprocesses are opt-in.
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   br sync --flush-only
-   git add .beads/
-   git commit -m "sync beads"
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+## Issue tracking
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- `br` (beads) is the tracker; `bd` is retired. After changes:
+  `br sync --flush-only`, then `git add .beads/ && git commit`. Full
+  workflow: `AGENTS.beads_viewer.md`.
