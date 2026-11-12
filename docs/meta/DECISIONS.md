@@ -118,7 +118,7 @@ all, ever."
 Decision: declaring an official version (pushing `vX.Y.Z`, GitHub
 release, PyPI upload, moving `main`) is the owner's act, after they
 review the tests. Agents prepare on `dev` and stop at "ready to tag".
-Agents may push `dev`, `feat/*`, `-rcN` tags and `proposed/vX.Y.Z`
+Agents may push `dev`, `feat/*`, `-rcN` tags and `tag-draft/vX.Y.Z`
 pointers. `main` stays the default branch, protected so only the owner
 pushes it. CI tests all branches; the release workflow tests before it
 publishes.

@@ -89,7 +89,7 @@ and R8 to R11, R15 and R16. RELEASING.md is the procedure.
 | R8 | A tag ships a green suite or it is not a tag; `--no-verify` is a debt due at the next release. | Tests gate deploys. | intent principles.md; release.sh step 1 | C |
 | R9 | Release from a worktree branch, never the owner's checkout; a release is a ref update (`git fetch . x:main`), not a checkout. | The owner's tree is theirs. | git-coord ff-without-checkout.md | C |
 | R10 | Linear history on `main`; fast-forward or rebase, never merge commits. | `git log main` reads as a release list. | git-coord linear-history.md | C |
-| R11 | Pre-release (`-rcN`) and visibly agent-marked (`proposed/`) tags may be pushed; official tags may not. | The marker in the name is what makes it safe. | memory 2026-11-08; BRANCH-MODEL.md | C |
+| R11 | Pre-release (`-rcN`) and visibly agent-marked (`tag-draft/`) tags may be pushed; official tags may not. | The marker in the name is what makes it safe. | memory 2026-11-08; BRANCH-MODEL.md | C |
 | R12 | README is a release artifact: regenerated from live output at the tag step under a clean env. | The README shows what the tag does, not what dev did. | `ccdd8c4`; scripts/build-readme.sh | W |
 | R13 | The tag message carries the commit list; CHANGELOG.md is the curated narrative. | Two audiences, two documents, one source. | CHANGELOG header; `bcfd471` | W + C |
 | R14 | PEP 440; minor for widened or renamed surface, patch for fixes, major only after two minors with zero renames. | A rename is a minor, even with aliases. | `ad892fc`; strategy § 2 | W (branch) |

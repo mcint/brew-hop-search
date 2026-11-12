@@ -22,7 +22,7 @@ reasoning and history live in `docs/meta/`.
   `chore/2026-11-12/dev-rebuild`). Types: feat, fix, docs, chore, ci,
   test, refactor, spec. `draft/*` is local-only; `main` and `dev` are the
   only bare names.
-- Pre-release or agent-marked tags may be pushed (`-rcN`; `proposed/…`
+- Pre-release or agent-marked tags may be pushed (`-rcN`; `tag-draft/…`
   once the convention is settled). Plain `vX.Y.Z` may not.
 - Never hand-run a step that `scripts/release.sh` deliberately skipped.
   `--skip-publish` also skips ff-main and the post-bump, on purpose.

@@ -7,7 +7,7 @@ tldr: >
   the GitHub release, uploading to PyPI, and moving `main`. Agents prepare
   the release on `dev` and stop at "ready to tag". Publishing is local today
   because the Actions publish job has never had a trusted publisher; the
-  owner runs `make publish` after the tag. `-rcN` and `proposed/vX.Y.Z` tags
+  owner runs `make publish` after the tag. `-rcN` and `tag-draft/vX.Y.Z` tags
   are the visible markers for anything that is not an official version.
 ---
 
@@ -23,7 +23,7 @@ come from.
 |---|---|
 | Write the changelog narrative, promote VERSION, run the suite, regenerate README, build `dist/`, create a local tag | agent or owner |
 | Push `dev` and `<type>/<slug>` work branches after the suite passes | agent or owner |
-| Push an `-rcN` or `proposed/vX.Y.Z` tag | agent or owner |
+| Push an `-rcN` or `tag-draft/vX.Y.Z` tag | agent or owner |
 | Review the test run on the release commit | owner |
 | Push `vX.Y.Z` | owner only |
 | `make publish` to PyPI | owner only |
@@ -41,7 +41,7 @@ Agents stop before the `git push origin vX.Y.Z` line, always.
 | `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; merges into `dev` (BRANCH-MODEL.md § Branch names) | agents and owner | yes |
 | `vX.Y.Z` tag | official version | the owner, after reviewing the test run | never |
 | `vX.Y.Z-rcN` tag | candidate for review; builds, publishes to TestPyPI only | agents or owner | yes |
-| `proposed/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
+| `tag-draft/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
 | `draft/*` | local intent, scratch | anyone | hook-refused |
 
 `main` is the default branch and is protected: only the owner pushes it,
@@ -98,14 +98,14 @@ it.
 Until then the release workflow should at least run the suite before the
 build job, so a tag that fails tests publishes nothing (see Open).
 
-## rc, proposed, official
+## rc, tag-draft, official
 
 - `vX.Y.Z-rcN`: a candidate. The workflow fires, tests, builds, and
   publishes to TestPyPI only. Agents may push one when the block looks
   complete and the suite is green.
-- `proposed/vX.Y.Z`: a pointer. "An agent thinks this commit is the
+- `tag-draft/vX.Y.Z`: a pointer. "An agent thinks this commit is the
   release." No workflow matches it. Agents may push one on the commit they
-  stopped at, so the owner can `git log proposed/vX.Y.Z` and decide.
+  stopped at, so the owner can `git log tag-draft/vX.Y.Z` and decide.
 - `vX.Y.Z`: the declaration. Owner only. Tests, builds, GitHub release,
   PyPI.
 
