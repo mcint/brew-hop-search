@@ -67,6 +67,20 @@ rationale lives in COMPARABLES.
 | **ruff** | [github.com/astral-sh/ruff](https://github.com/astral-sh/ruff) | Pre-commit posture; lint as a fast feedback loop |
 | **homebrew tap pattern** | brew | Distribution shape — Formula/*.rb in this repo, installable as a tap |
 
+## Version & Build Info
+
+The why lives in `docs/research/2026-11-12-git-facts-prior-art.md`; the
+design in `docs/specs/drafts/git-facade.md`.
+
+| Project | Link | What we took |
+|---------|------|--------------|
+| **go build -buildvcs** | [pkg.go.dev/cmd/go](https://pkg.go.dev/cmd/go) | Stamp VCS facts only when the thing being built and the repo agree; otherwise stamp nothing, never the wrong repo. `debug.ReadBuildInfo` is our `_build_info.py` read back |
+| **setuptools-scm** | [setuptools-scm.readthedocs.io](https://setuptools-scm.readthedocs.io/) | Toplevel must equal project root; parent-walk is opt-in. Honour `GIT_CEILING_DIRECTORIES` (their PR #1106 fixed our exact tarball-in-foreign-repo bug) |
+| **git** | [git-scm.com/docs/git](https://git-scm.com/docs/git) | `GIT_CEILING_DIRECTORIES` as the walk bound; `rev-parse --show-toplevel` as the one question we ask before any other |
+| **vergen** | [docs.rs/vergen-gitcl](https://docs.rs/vergen-gitcl/) | Build-script stamping via the git CLI, not a git library; idempotent defaults on error instead of a failed build |
+| **versioneer** | [github.com/python-versioneer](https://github.com/python-versioneer/python-versioneer) | One vendored stdlib file shared by build step and runtime; `0+unknown` over a hard failure. What we avoid: its parent-walk default |
+| **dunamai** | [github.com/mtkennerly/dunamai](https://github.com/mtkennerly/dunamai) | Stdlib-only subprocess git is enough; a ~60-line module beats a runtime dependency. What we add: the ownership gate it lacks |
+
 ## Domain (Package Search)
 
 | Project | Link | What we took |
