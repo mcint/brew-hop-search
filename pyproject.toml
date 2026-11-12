@@ -28,6 +28,7 @@ dev = ["pytest"]
 [project.scripts]
 brew-hop-search = "brew_hop_search.cli:main"
 brewhs = "brew_hop_search.cli:main"
+brew-hs = "brew_hop_search.cli:main"  # `brew hs`: brew runs brew-<name> from PATH
 
 [project.urls]
 Homepage = "https://github.com/mcint/brew-hop-search"
