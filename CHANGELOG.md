@@ -50,7 +50,15 @@ surface is unchanged.
 
 ### Changed
 
-- Issue tracking: beads (`br`/`bv`); `.beads/` is tracked.
+- **The root is lean.** Build and release machinery (Makefile targets,
+  scripts, build hook, README template, hooks) moved to `release/`, agent
+  material to `agents/`, `DEVELOPMENT.md` to `docs/`. `Formula/` is gone
+  (the tap `mcint/tap` is the source of truth) and so is the original
+  `brew-search` script (git has it). `tests/test_root_layout.py` pins the
+  allowed root entries. Rationale: docs/meta/DECISIONS.md.
+- Issue tracking: beads (`br`/`bv`) on its own branch `chore/beads`,
+  reached through an untracked `.beads/redirect`; `.beads/` no longer
+  ships in the tree.
 - Release flow regenerates README under a clean env at the tag step.
 - SECURITY.md drops the response SLA; GitHub Private Vulnerability
   Reporting is the preferred channel.
