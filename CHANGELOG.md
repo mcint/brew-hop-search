@@ -33,6 +33,18 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
+- **A brew install no longer reports Homebrew's own git tree.** `git -C`
+  walked up from the Cellar into `/opt/homebrew/.git`, so 0.3.7 from the
+  tap printed `0.3.7+95`, Homebrew/brew's HEAD and ten of its merge
+  commits as its own. Git facts now count only when the enclosing repo
+  *is* this project; otherwise the baked build info is the truth. The
+  build hook applies the same rule to sdists built inside other repos.
+  Spec: `docs/specs/features/version-reporting.md`.
+- `-VV` no longer says "up to date" when the local build is *ahead* of
+  PyPI: a dev tree, rc or between-tags build prints blue "ahead of PyPI";
+  a plain X.Y.Z that PyPI has never seen prints red and exits 1.
+- The commit-count version test no longer depends on whether the tree
+  has been built.
 
 ### Changed
 
