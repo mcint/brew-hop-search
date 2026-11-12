@@ -7,6 +7,15 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [Unreleased]
+
+### Fixed
+
+- **`-i` crashed on installed casks** (`TypeError: '<' not supported
+  between instances of 'str' and 'list'`) when one cask had an empty
+  display-name list and another did not; the tie-break sort key now
+  reduces every record to one string.
+
 ## [0.3.7] — 2026-05-28
 
 A user-facing capability release: real query syntax, offline-first
