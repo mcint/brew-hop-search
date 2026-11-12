@@ -1,4 +1,4 @@
-<!-- from README.md.template, built with `make readme` -->
+<!-- from release/README.md.template, built with `make readme` -->
 # brew-hop-search
 
 Fast offline-first search of Homebrew formulae, casks, taps, and installed packages.

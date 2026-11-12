@@ -63,7 +63,7 @@ rationale lives in COMPARABLES.
 | Project | Link | What we took |
 |---------|------|--------------|
 | **uv** | [github.com/astral-sh/uv](https://github.com/astral-sh/uv) | `uv sync` / `uv run` reproducibility; lockfile-first dev loop |
-| **hatch** | [hatch.pypa.io](https://hatch.pypa.io/) | Build backend; `hatch_build.py` hook for VERSION baking |
+| **hatch** | [hatch.pypa.io](https://hatch.pypa.io/) | Build backend; `release/hatch_build.py` hook for VERSION baking |
 | **ruff** | [github.com/astral-sh/ruff](https://github.com/astral-sh/ruff) | Pre-commit posture; lint as a fast feedback loop |
 | **homebrew tap pattern** | brew | Distribution shape — Formula/*.rb in this repo, installable as a tap |
 

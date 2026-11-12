@@ -2,9 +2,9 @@
 # Publish the already-tagged, already-built package to PyPI (or TestPyPI).
 #
 # Usage:
-#   ./scripts/publish.sh            # publish to TestPyPI
-#   ./scripts/publish.sh --release  # publish to PyPI
-#   ./scripts/publish.sh --skip-build  # assume dist/ is already populated
+#   ./release/publish.sh            # publish to TestPyPI
+#   ./release/publish.sh --release  # publish to PyPI
+#   ./release/publish.sh --skip-build  # assume dist/ is already populated
 #
 # Invariants (see claude-collab/release-flow.md):
 #   - HEAD must be on the tag matching the current version (no tagging here).
@@ -52,7 +52,7 @@ fi
 tag="v${version}"
 if ! git rev-parse --verify "refs/tags/${tag}" >/dev/null 2>&1; then
     echo "✗ Tag ${tag} does not exist. Tag first:" >&2
-    echo "    ./scripts/build-tag.sh --promote" >&2
+    echo "    ./release/build-tag.sh --promote" >&2
     exit 1
 fi
 head_sha=$(git rev-parse HEAD)

@@ -104,7 +104,7 @@ def test_build_hook_refuses_parent_repo(tmp_path):
     """hatch_build must not read a parent directory's git when the project
     root being built is not itself the git toplevel."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location("hatch_build", REPO / "hatch_build.py")
+    spec = importlib.util.spec_from_file_location("hatch_build", REPO / "release" / "hatch_build.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Generate README.md from README.md.template + live command output.
-# Run: ./scripts/build-readme.sh > README.md
+# Generate README.md from release/README.md.template + live command output.
+# Run: ./release/build-readme.sh > README.md
 #   or: make readme
 set -euo pipefail
 
-TEMPLATE="README.md.template"
+TEMPLATE="release/README.md.template"
 BHS="uv run brew-hop-search"
 
 if [ ! -f "$TEMPLATE" ]; then

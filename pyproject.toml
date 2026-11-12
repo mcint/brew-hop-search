@@ -55,3 +55,4 @@ artifacts = [
 ]
 
 [tool.hatch.build.hooks.custom]
+path = "release/hatch_build.py"

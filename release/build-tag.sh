@@ -2,13 +2,13 @@
 # Tag the current commit with a version tag on build.
 #
 # Default: creates an rc tag (e.g., v0.3.0-rc1, v0.3.0-rc2)
-# Promote: ./scripts/build-tag.sh --promote  → tags as v0.3.0 (release)
+# Promote: ./release/build-tag.sh --promote  → tags as v0.3.0 (release)
 #
 # Usage:
-#   ./scripts/build-tag.sh           # auto rc tag
-#   ./scripts/build-tag.sh --promote # promote to release tag
-#   ./scripts/build-tag.sh --list    # list version tags
-#   ./scripts/build-tag.sh --latest  # show latest tag
+#   ./release/build-tag.sh           # auto rc tag
+#   ./release/build-tag.sh --promote # promote to release tag
+#   ./release/build-tag.sh --list    # list version tags
+#   ./release/build-tag.sh --latest  # show latest tag
 set -euo pipefail
 
 VERSION_FILE="src/brew_hop_search/VERSION"
@@ -68,7 +68,7 @@ case "${1:-}" in
         tag="v${version}-rc${rc}"
         _tag_message "Release candidate ${version}-rc${rc}" | git tag -a "$tag" -F -
         echo "Tagged: $tag"
-        echo "Promote with: ./scripts/build-tag.sh --promote"
+        echo "Promote with: ./release/build-tag.sh --promote"
         exit 0
         ;;
     *)

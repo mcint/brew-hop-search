@@ -94,7 +94,7 @@ ls -la dist/      # built artifacts with mtimes
 
 ## Script map
 
-All scripts live in `scripts/`. Most users only need `make` targets.
+All scripts live in `release/`. Most users only need `make` targets.
 
 | Script | Invoked by | Purpose |
 |--------|------------|---------|

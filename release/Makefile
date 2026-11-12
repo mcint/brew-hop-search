@@ -15,40 +15,40 @@ build: test ## Build package (runs tests first)
 	uv build
 
 readme: ## Regenerate README.md from live output
-	./scripts/build-readme.sh > README.md
+	./release/build-readme.sh > README.md
 
 tag: ## Create rc tag
-	./scripts/build-tag.sh
+	./release/build-tag.sh
 
 tag-release: ## Create release tag
-	./scripts/build-tag.sh --promote
+	./release/build-tag.sh --promote
 
 tag-list: ## List version tags
-	./scripts/build-tag.sh --list
+	./release/build-tag.sh --list
 
 release: ## Interactive release (test → build → tag → ff main)
-	./scripts/release.sh
+	./release/release.sh
 
 release-rc: ## Unattended rc release
-	./scripts/release.sh --yes --rc
+	./release/release.sh --yes --rc
 
 release-test: ## Release flow → TestPyPI; expects HEAD already tagged
-	./scripts/release.sh --testpypi --skip-tag --yes
+	./release/release.sh --testpypi --skip-tag --yes
 
 release-yes: ## Unattended PyPI release (prompts pre-answered)
-	./scripts/release.sh --yes --release
+	./release/release.sh --yes --release
 
 dry-run: ## Dry-run release (show plan without executing)
-	./scripts/release.sh --dry-run
+	./release/release.sh --dry-run
 
 bump: ## Bump patch version (0.3.1 → 0.3.2)
-	./scripts/bump-version.sh
+	./release/bump-version.sh
 
 bump-dev: ## Bump + tag .dev0 (0.3.1 → 0.3.2.dev0; no-op if already dev)
-	./scripts/bump-version.sh --dev
+	./release/bump-version.sh --dev
 
 bump-release: ## Strip .devN (0.3.2.dev0 → 0.3.2; no-op if no dev)
-	./scripts/bump-version.sh --release
+	./release/bump-version.sh --release
 
 clean: ## Remove build artifacts
 	rm -rf dist/ build/ *.egg-info src/*.egg-info
@@ -57,12 +57,12 @@ version: ## Show current version
 	@echo $(VERSION)
 
 versions: ## List versions published on PyPI + TestPyPI
-	@. scripts/_guards.sh; \
+	@. release/_guards.sh; \
 	 echo "# pypi"; pypi_versions pypi; \
 	 echo "# testpypi"; pypi_versions testpypi
 
 publish-test: ## Publish current dist to TestPyPI (assumes built; run `make build` first)
-	./scripts/publish.sh --skip-build
+	./release/publish.sh --skip-build
 
 publish: ## Publish current dist to PyPI (assumes built; run `make build` first)
-	./scripts/publish.sh --skip-build --release
+	./release/publish.sh --skip-build --release

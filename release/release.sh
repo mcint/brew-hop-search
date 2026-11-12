@@ -15,9 +15,9 @@
 #   --testpypi       Publish to TestPyPI instead of PyPI
 #
 # Usage:
-#   ./scripts/release.sh                 # interactive
-#   ./scripts/release.sh --yes --release # unattended PyPI release
-#   ./scripts/release.sh --dry-run       # see the plan
+#   "$here"/release.sh                 # interactive
+#   "$here"/release.sh --yes --release # unattended PyPI release
+#   "$here"/release.sh --dry-run       # see the plan
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -79,7 +79,7 @@ if [[ "$VERSION" == *-dev ]]; then
         echo "(dry-run: would promote $VERSION → $promoted and commit)"
         VERSION="$promoted"
     else
-        ./scripts/bump-version.sh --release
+        "$here"/bump-version.sh --release
         VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
         git add "$VERSION_FILE"
         git commit -m "Promote to release v${VERSION}" -q
@@ -150,7 +150,7 @@ if $DRY; then
 else
     env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-dumb}" \
         LANG="${LANG:-en_US.UTF-8}" LC_ALL="${LC_ALL:-${LANG:-en_US.UTF-8}}" \
-        ./scripts/build-readme.sh > README.md
+        "$here"/build-readme.sh > README.md
     if git diff --quiet README.md; then
         echo "✓ README already current"
     else
@@ -184,11 +184,11 @@ fi
 
 case "$TAG_MODE" in
     rc)
-        run ./scripts/build-tag.sh
+        run "$here"/build-tag.sh
         TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v${VERSION}-rc1")
         ;;
     release)
-        run ./scripts/build-tag.sh --promote
+        run "$here"/build-tag.sh --promote
         TAG="v${VERSION}"
         ;;
     skip)
@@ -214,7 +214,7 @@ echo
 # ── Step 5: Publish ──────────────────────────────────────────
 if $SKIP_PUBLISH; then
     echo "── Step 5: Publish (SKIPPED via --skip-publish) ──────"
-    echo "  resume with: ./scripts/publish.sh $([ "$PUBLISH_INDEX" = pypi ] && echo --release) --skip-build"
+    echo "  resume with: "$here"/publish.sh $([ "$PUBLISH_INDEX" = pypi ] && echo --release) --skip-build"
     echo
 else
     echo "── Step 5: Publish to $PUBLISH_INDEX ────────────────────"
@@ -224,7 +224,7 @@ else
         confirm "Publish v${VERSION} to ${PUBLISH_INDEX}?" || { echo "Aborted before publish."; exit 1; }
         publish_args=(--skip-build)
         [ "$PUBLISH_INDEX" = "pypi" ] && publish_args+=(--release)
-        ./scripts/publish.sh "${publish_args[@]}"
+        "$here"/publish.sh "${publish_args[@]}"
     fi
     echo "✓ Published"
     echo
@@ -249,7 +249,7 @@ fi
 # ── Step 7: Post-publish bump to next .dev0 (PyPI only) ──────
 if [ "$TAG_MODE" = "release" ] && ! $SKIP_PUBLISH && ! $DRY && [ "$PUBLISH_INDEX" = "pypi" ]; then
     echo "── Step 7: Post-publish: bump dev version ─────────────"
-    ./scripts/bump-version.sh --dev
+    "$here"/bump-version.sh --dev
     echo "(uncommitted — git diff to review; sweep with next commit)"
     echo
 fi

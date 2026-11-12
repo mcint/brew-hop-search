@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared preflight guards for build/publish scripts.
-# Source, don't execute: `. scripts/_guards.sh`
+# Source, don't execute: `. release/_guards.sh`
 #
 # Functions:
 #   pypi_versions INDEX    # print published versions (INDEX: pypi|testpypi)
