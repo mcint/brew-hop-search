@@ -1,8 +1,10 @@
 name: CI
 
+# Every branch, every PR: dev and feat/* are tested, not only main
+# (docs/meta/BRANCH-MODEL.md § Workflows).
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
 
 jobs:
