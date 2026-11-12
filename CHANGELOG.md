@@ -26,6 +26,10 @@ surface is unchanged.
 
 ### Fixed
 
+- **`-i` crashed on installed casks** (`TypeError: '<' not supported
+  between instances of 'str' and 'list'`) when one cask had an empty
+  display-name list and another did not; the tie-break sort key now
+  reduces every record to one string.
 - `-VV` no longer says "up to date" when the local build is *ahead* of
   PyPI: a dev tree, rc, or between-tags build prints blue "ahead of
   PyPI"; a plain X.Y.Z that PyPI has never seen prints red and exits 1.
