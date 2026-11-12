@@ -31,6 +31,13 @@ surface is unchanged.
   PyPI"; a plain X.Y.Z that PyPI has never seen prints red and exits 1.
 - `-VV` fetches PyPI fresh with a 15s timeout and records the check
   (closes #1).
+- A brew install no longer reports Homebrew's own git tree. `git -C`
+  walked up from the Cellar into `/opt/homebrew/.git`, so 0.3.7 from the
+  tap printed Homebrew/brew's HEAD, commit count and recent commits as
+  its own. Git facts now count only when the enclosing repo *is* this
+  project; otherwise the baked build info is the truth. The build hook
+  applies the same rule, so an sdist built inside another checkout does
+  not adopt the parent's commit.
 - `-C` cache-status columns align after the db row.
 - The commit-count version test no longer depends on whether the tree
   has been built.
