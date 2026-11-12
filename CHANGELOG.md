@@ -7,6 +7,45 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [Unreleased]
+
+The block forming on `dev` since 0.3.7. This release starts to target
+`brew <subcommand>` support; the `bhs` / `brewhs` / `brew-hop-search`
+surface is unchanged.
+
+### Added
+
+- **`brew hs`.** A `brew-hs` console script, which brew's external
+  command lookup runs as `brew hs python`; the tap formula symlinks
+  `brewhs` and `brew-hs` beside `brew-hop-search`. Spec: short-names.md
+  § brew subcommand.
+- **`-O` takes terms.** `bhs -O python` narrows the outdated list by
+  name with the search grammar (`^prefix`, `suffix$`, `!negate`).
+- Draft specs: locations (sources × roots, `--cached`, `detect`) and
+  remote-tap (browse a tap without tapping it).
+
+### Fixed
+
+- `-VV` no longer says "up to date" when the local build is *ahead* of
+  PyPI: a dev tree, rc, or between-tags build prints blue "ahead of
+  PyPI"; a plain X.Y.Z that PyPI has never seen prints red and exits 1.
+- `-VV` fetches PyPI fresh with a 15s timeout and records the check
+  (closes #1).
+- `-C` cache-status columns align after the db row.
+- The commit-count version test no longer depends on whether the tree
+  has been built.
+- The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
+  and `-VV` pointed at a tap that does not exist.
+
+### Changed
+
+- Issue tracking: beads (`br`/`bv`); `.beads/` is tracked.
+- Release flow regenerates README under a clean env at the tag step.
+- SECURITY.md drops the response SLA; GitHub Private Vulnerability
+  Reporting is the preferred channel.
+- Dev interpreter pinned to 3.12 via `.python-version`; CI matrix
+  unchanged.
+
 ## [0.3.7] — 2026-05-28
 
 A user-facing capability release: real query syntax, offline-first
