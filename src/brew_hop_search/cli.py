@@ -367,20 +367,24 @@ def _show_version(level: int) -> int:
         print(f"  {bold('github')}      {GITHUB_URL}")
         if BREW_TAP_URL:
             print(f"  {bold('tap')}         {BREW_TAP_URL}")
-        # Show git commit log
-        import subprocess
-        try:
-            pkg_dir = Path(__file__).resolve().parent
-            result = subprocess.run(
-                ["git", "-C", str(pkg_dir), "log", "--oneline", "-10"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                print(f"\n{bold('recent commits')}")
-                for line in result.stdout.strip().splitlines():
-                    print(f"  {dim(line)}")
-        except Exception:
-            pass
+        # Recent commits: only from this project's own checkout. A brew
+        # install sits inside Homebrew's repo and would otherwise list
+        # Homebrew/brew's log here (seen on 0.3.7 from the tap).
+        import brew_hop_search as _pkg
+        top = _pkg._dev_tree_git()
+        if top is not None:
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ["git", "-C", str(top), "log", "--oneline", "-10"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    print(f"\n{bold('recent commits')}")
+                    for line in result.stdout.strip().splitlines():
+                        print(f"  {dim(line)}")
+            except Exception:
+                pass
         # Live PyPI version check. -VV means "tell me the truth, now": no
         # cache short-circuit (unlike check_if_due), a longer timeout since
         # the user is waiting, and a write-back so the background check
