@@ -47,6 +47,10 @@ reasoning and history live in `docs/meta/`.
   red-green snapshot test in the same commit.
 - Conventional Commits with scope; small scoped commits; never amend or
   rebase shared history without asking.
+- CHANGELOG: the forming section is headed by the next version as
+  `VERSION` already names it (`## [0.3.8]`), never "Unreleased" or
+  "unreleased". Being on a branch is a state of the world, not something
+  to encode in the repo; the date is added at release.
 - Pin the dev interpreter with `.python-version`; the CI matrix, not the
   pin, sets `requires-python`.
 - Lowercase flags are sources and adverbs, UPPERCASE are verbs and info.

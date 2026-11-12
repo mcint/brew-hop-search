@@ -122,13 +122,21 @@ avoid interfering with other tools) is grown carefully and separately; see
 DECISIONS.md. Which version number the next release takes (0.3.8, a
 0.3.8/0.3.9 split, or 0.4.0) is the owner's call and is still open.
 
+## The changelog while a release forms
+
+`CHANGELOG.md`'s top section is headed by the next version as `VERSION`
+already names it: `## [0.3.8]` while `VERSION` reads `0.3.8-dev`. Not
+"Unreleased", not "unreleased": being on a branch is a state of the world,
+and the repo does not encode it; the version invariant already guarantees
+the heading is unique. The release step adds the date. Every PR into
+`dev` adds its bullets under that one heading, so PRs merge without a
+heading conflict.
+
 ## Open
 
-- `release.yml`: add a test job before `build`; test all branches in
-  `ci.yml`, not only `main` and PRs.
 - Trusted publishing (bhs-59v): configure it, or delete the job and
   document local publish as the path.
-- `origin/main` at `8c77784` and the two "Promote to release" commits on
-  `origin/dev`: reset, rewind, or re-cut as the block. Owner's decision.
 - Whether this file lives here or as `release/README.md` once a `release/`
   directory exists.
+- An integration lane agents may push, so `dev` stays release-prep
+  (owner, 2026-11-12); name pending.
