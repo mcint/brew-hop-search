@@ -21,9 +21,6 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 ### Fixed
 
-- `--help` renders option lines the same on every Python (`-n, --limit
-  N[+OFF]`); argparse changed its layout in 3.13 and the snapshot test
-  depended on which interpreter ran it.
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
 
