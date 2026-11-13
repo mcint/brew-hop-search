@@ -139,6 +139,8 @@ def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 2.0,
 
     # All complete — render one final line per kind, in original order.
     by_kind = {k: (d, ok, msg) for k, d, ok, msg in results}
+    from brew_hop_search.timing import note_refresh
+    note_refresh(f"{max(d for _, d, _, _ in results) / 1000.0:.1f}s")
     parts = []
     for k in kinds:
         d, ok, msg = by_kind[k]

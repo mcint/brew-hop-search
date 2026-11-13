@@ -7,7 +7,7 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
-## [Unreleased]
+## [0.3.8]
 
 This release starts to target `brew <subcommand>` support; the `bhs` /
 `brewhs` / `brew-hop-search` surface is unchanged.
@@ -18,6 +18,16 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
   command lookup runs as `brew hs python`; the tap formula symlinks
   `brewhs` and `brew-hs` beside `brew-hop-search`. Spec: short-names.md
   § brew subcommand.
+
+### Changed
+
+- **The time footer tells the whole story.** `# [time] total 0.129s ·
+  cache 0.037s · api(0) —`, with `· refresh bg` or `· refresh 1.9s` when a
+  background refresh ran. `total` runs from the package's first import,
+  not from `main()`; `cache` is the SQLite time; `api(n)` counts
+  foreground HTTP requests. The v1 footer once printed `0.134s` beside a
+  shell `time` of 2.7s. Spec: `docs/specs/features/timing.md`, which also
+  names what the process cannot see (brew's own bootstrap under `brew hs`).
 
 ### Fixed
 

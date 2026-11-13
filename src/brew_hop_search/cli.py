@@ -403,14 +403,14 @@ def _show_version(level: int) -> None:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
-    _t0 = time.monotonic()
     _args_holder: list = []  # populated post-parse so the finally can read it
     try:
         return _main_inner(argv, _args_holder)
     finally:
         if _args_holder:
-            from brew_hop_search.timing import emit_footer
-            emit_footer(_args_holder[0], time.monotonic() - _t0)
+            from brew_hop_search.timing import emit_footer, process_start
+            # total = whole run from the package's first import, not main().
+            emit_footer(_args_holder[0], time.monotonic() - process_start())
 
 
 def _main_inner(argv, _args_holder):
@@ -807,7 +807,9 @@ def _main_inner(argv, _args_holder):
         if verbose >= 3:
             print(dim(f"  [{kind}] searching {source_count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
         # Fetch limit+1 to detect truncation
-        results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
+        from brew_hop_search.timing import Timer
+        with Timer("cache"):
+            results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
         truncated = len(results) > limit
         if truncated:
             results = results[:limit]
