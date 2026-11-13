@@ -15,17 +15,34 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+try:
+    from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+except ImportError:  # imported by tests outside a build; the hook never runs
+    BuildHookInterface = object  # type: ignore[misc,assignment]
 
 
-def _git(*args: str) -> str:
+def _git(*args: str, cwd: str | None = None) -> str:
     try:
         r = subprocess.run(
-            ["git", *args], capture_output=True, text=True, check=False, timeout=5
+            ["git", *args], capture_output=True, text=True, check=False,
+            timeout=5, cwd=cwd,
         )
         return r.stdout.strip() if r.returncode == 0 else ""
     except Exception:
         return ""
+
+
+def project_is_git_toplevel(root) -> bool:
+    """True only when `root` (the project being built) is itself the git
+    toplevel. An sdist extracted inside somebody else's checkout, say a
+    source tree under ~/src or Homebrew's /opt/homebrew, would otherwise
+    bake *that* repo's commit into _build_info. Parent repos never count.
+    """
+    root = Path(root).resolve()
+    top = _git("rev-parse", "--show-toplevel", cwd=str(root))
+    if not top:
+        return False
+    return Path(top).resolve() == root
 
 
 class CustomBuildHook(BuildHookInterface):
@@ -38,7 +55,13 @@ class CustomBuildHook(BuildHookInterface):
         # wheel-build step runs inside the extracted sdist (no .git) and
         # would overwrite with empty values — so: skip if git is absent
         # and the file already exists (inherited from sdist).
-        commit_short = _git("rev-parse", "--short", "HEAD")
+        # Only this project's own repo counts; a parent directory's repo
+        # (sdist extracted inside another checkout) is treated as "no git"
+        # so the sdist-phase file survives.
+        if project_is_git_toplevel(Path.cwd()):
+            commit_short = _git("rev-parse", "--short", "HEAD")
+        else:
+            commit_short = ""
         out = "src/brew_hop_search/_build_info.py"
         if not commit_short:
             import os as _os
