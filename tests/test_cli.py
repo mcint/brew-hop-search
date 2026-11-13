@@ -31,8 +31,17 @@ def run(*args: str) -> str:
     return clean
 
 
+# argparse changed how it writes an option that takes a value: 3.9 to 3.12
+# print `-n N[+OFF], --limit N[+OFF]` (and wrap the help text onto the next
+# line), 3.13+ print `-n, --limit N[+OFF]`. Measured here on 3.9.6,
+# 3.10.21, 3.11.16, 3.12.11 (old) and 3.13.16, 3.14.7, 3.15.1 (new); the
+# threshold is 3.13.0. The CLI does not shim this; the one test that shows
+# the full help keeps a snapshot per layout instead.
+_HELP_LAYOUT = "" if sys.version_info >= (3, 13) else "py312"
+
+
 def test_help(snap):
-    snap.assert_match(run("--help"))
+    snap.assert_match(run("--help"), suffix=_HELP_LAYOUT)
 
 
 def test_help_terse(snap):
