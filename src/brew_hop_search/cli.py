@@ -413,12 +413,29 @@ def main(argv=None):
             emit_footer(_args_holder[0], time.monotonic() - _t0)
 
 
+class _HelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Render option lines the same way on every Python.
+
+    argparse changed how it writes an option that takes a value: 3.9 to
+    3.12 print `-n N[+OFF], --limit N[+OFF]`, 3.13+ print
+    `-n, --limit N[+OFF]`. The help text is snapshot-tested, so pin the
+    newer, shorter form here instead of depending on the interpreter.
+    """
+
+    def _format_action_invocation(self, action: argparse.Action) -> str:
+        if not action.option_strings or action.nargs == 0:
+            return super()._format_action_invocation(action)
+        default = self._get_default_metavar_for_optional(action)
+        args_string = self._format_args(action, default)
+        return ", ".join(action.option_strings) + " " + args_string
+
+
 def _main_inner(argv, _args_holder):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
         usage="%(prog)s [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]",
         description="Fast offline-first Homebrew formula/cask search.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=_HelpFormatter,
         add_help=False,
     )
     ap.add_argument("query", nargs="*",

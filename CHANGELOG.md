@@ -7,7 +7,7 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
-## [Unreleased]
+## [0.3.8]
 
 This release starts to target `brew <subcommand>` support; the `bhs` /
 `brewhs` / `brew-hop-search` surface is unchanged.
@@ -21,6 +21,9 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 ### Fixed
 
+- `--help` renders option lines the same on every Python (`-n, --limit
+  N[+OFF]`); argparse changed its layout in 3.13 and the snapshot test
+  depended on which interpreter ran it.
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
 
