@@ -7,6 +7,28 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [0.3.8]
+
+This release starts to target `brew <subcommand>` support; the `bhs` /
+`brewhs` / `brew-hop-search` surface is unchanged.
+
+### Added
+
+- **`brew hs`.** A `brew-hs` console script, which brew's external
+  command lookup runs as `brew hs python`; the tap formula symlinks
+  `brewhs` and `brew-hs` beside `brew-hop-search`. Spec: short-names.md
+  § brew subcommand.
+
+### Fixed
+
+- The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
+  and `-VV` pointed at a tap that does not exist.
+
+### Changed
+
+- Dev interpreter pinned to 3.12 via `.python-version`; CI matrix
+  unchanged.
+
 ## [0.3.7] — 2026-05-28
 
 A user-facing capability release: real query syntax, offline-first

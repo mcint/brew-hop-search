@@ -26,7 +26,7 @@ info:
   -H, --history         version history for rollback
 
 cache:
-  --refresh [DUR|KIND[,KIND...]], --fresh [DUR|KIND[,KIND...]]
+  --refresh, --fresh [DUR|KIND[,KIND...]]
                         sync refresh: bare=force, =DUR=if older,
                         =KIND[,KIND...] (kinds:
                         index,installed,outdated,taps,local,all). --fresh is
@@ -44,8 +44,7 @@ output:
   -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
   --multi, --long       multi-line per-result with labeled fields
-  -n N[+OFF], --limit N[+OFF]
-                        max results [+offset], 0=all (default: 20, or
+  -n, --limit N[+OFF]   max results [+offset], 0=all (default: 20, or
                         $BREW_HOP_SEARCH_LIMIT)
   -v, --verbose         source tags, cache info (-vv per-source detail)
   --no-timing           suppress the `# [time]` footer
