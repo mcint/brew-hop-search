@@ -101,9 +101,13 @@ def test_commit_count_falls_back_to_build_info(monkeypatch):
     """If git is unavailable (wheel install), use baked BUILD_COMMIT_COUNT."""
     import sys
     import types
+    import brew_hop_search
     fake = types.ModuleType("brew_hop_search._build_info")
     fake.BUILD_COMMIT_COUNT = 42
     monkeypatch.setitem(sys.modules, "brew_hop_search._build_info", fake)
+    # `from pkg import mod` returns the package attribute when one is already
+    # bound (a real _build_info imported earlier), so unbind it.
+    monkeypatch.delattr(brew_hop_search, "_build_info", raising=False)
 
     import subprocess as _sp
     def _raise(*a, **kw): raise OSError("simulated no git")
@@ -116,16 +120,14 @@ def test_commit_count_falls_back_to_build_info(monkeypatch):
 def test_commit_count_zero_when_no_git_no_build_info(monkeypatch):
     """No git and no _build_info → 0 (renders plain VERSION)."""
     import sys
-    monkeypatch.delitem(sys.modules, "brew_hop_search._build_info", raising=False)
-
-    # Make import fail too.
-    import builtins
-    real_import = builtins.__import__
-    def _no_build_info(name, *a, **kw):
-        if name == "brew_hop_search._build_info":
-            raise ImportError("simulated no _build_info")
-        return real_import(name, *a, **kw)
-    monkeypatch.setattr(builtins, "__import__", _no_build_info)
+    import brew_hop_search
+    # A real _build_info.py exists in any tree that has been built (hatch's
+    # build hook writes it on `uv sync`), so simulate its absence the way
+    # the import system honours: None in sys.modules makes
+    # `from brew_hop_search import _build_info` raise ModuleNotFoundError,
+    # and the package attribute must be unbound or the import short-circuits.
+    monkeypatch.setitem(sys.modules, "brew_hop_search._build_info", None)
+    monkeypatch.delattr(brew_hop_search, "_build_info", raising=False)
 
     import subprocess as _sp
     def _raise(*a, **kw): raise OSError("simulated no git")
