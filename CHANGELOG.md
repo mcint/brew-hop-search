@@ -19,6 +19,16 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
   `brewhs` and `brew-hs` beside `brew-hop-search`. Spec: short-names.md
   § brew subcommand.
 
+### Changed
+
+- **The time footer tells the whole story.** `# [time] total 0.129s ·
+  cache 0.037s · api(0) —`, with `· refresh bg` or `· refresh 1.9s` when a
+  background refresh ran. `total` runs from the package's first import,
+  not from `main()`; `cache` is the SQLite time; `api(n)` counts
+  foreground HTTP requests. The v1 footer once printed `0.134s` beside a
+  shell `time` of 2.7s. Spec: `docs/specs/features/timing.md`, which also
+  names what the process cannot see (brew's own bootstrap under `brew hs`).
+
 ### Fixed
 
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README

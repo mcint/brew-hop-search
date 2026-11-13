@@ -2,8 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
-import os
-from pathlib import Path
+import time as _time
+
+# The earliest instant this package can observe: within ~10 ms of process
+# start for a console script (interpreter boot and `site` come before it).
+# timing.process_start() reads it so the footer's `total` means the whole
+# run, not just main().
+_T0 = _time.monotonic()
+
+import os  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 __version__ = (Path(__file__).parent / "VERSION").read_text().strip()
 
