@@ -28,9 +28,16 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
   foreground HTTP requests. The v1 footer once printed `0.134s` beside a
   shell `time` of 2.7s. Spec: `docs/specs/features/timing.md`, which also
   names what the process cannot see (brew's own bootstrap under `brew hs`).
+- Dev interpreter pinned to 3.12 via `.python-version`. CI tests the floor
+  and the newest stable, Python 3.9 and 3.15; `make test-all` runs every
+  version in between locally.
 
 ### Fixed
 
+- **`-i` crashed on installed casks** (`TypeError: '<' not supported
+  between instances of 'str' and 'list'`) when one cask had an empty
+  display-name list and another did not; the tie-break sort key now
+  reduces every record to one string.
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
 - **A brew install no longer reports Homebrew's own git tree.** `git -C`
@@ -45,11 +52,6 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
   a plain X.Y.Z that PyPI has never seen prints red and exits 1.
 - The commit-count version test no longer depends on whether the tree
   has been built.
-
-### Changed
-
-- Dev interpreter pinned to 3.12 via `.python-version`; CI matrix
-  unchanged.
 
 ## [0.3.7] — 2026-05-28
 
