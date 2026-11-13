@@ -11,6 +11,15 @@ help: ## Show this help
 test: ## Run tests
 	uv run python -m pytest tests/ -x -q --tb=short
 
+# CI runs the floor and the newest stable (3.9, 3.15). Everything between
+# is a local check: `make test-all`, or `make test-all PYTHONS="3.12 3.13"`.
+PYTHONS ?= 3.9 3.10 3.11 3.12 3.13 3.14 3.15
+test-all: ## Run tests on every PYTHONS version (ephemeral envs)
+	@for v in $(PYTHONS); do \
+	  echo "== python $$v"; \
+	  uv run --isolated --python $$v python -m pytest tests/ -q --tb=short || exit 1; \
+	done
+
 build: test ## Build package (runs tests first)
 	uv build
 
