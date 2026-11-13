@@ -2,8 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
-import os
-from pathlib import Path
+import time as _time
+
+# The earliest instant this package can observe: within ~10 ms of process
+# start for a console script (interpreter boot and `site` come before it).
+# timing.process_start() reads it so the footer's `total` means the whole
+# run, not just main().
+_T0 = _time.monotonic()
+
+import os  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 __version__ = (Path(__file__).parent / "VERSION").read_text().strip()
 
@@ -27,24 +35,59 @@ def user_agent() -> str:
     return f"brew-hop-search/{version_info()}"
 
 
+def _dev_tree_git():
+    """The git toplevel if, and only if, this package runs from *its own*
+    checkout. Returns a Path, or None.
+
+    `git -C <pkg_dir>` walks up through parents, so a brew install under
+    /opt/homebrew/Cellar finds Homebrew's own repo and an sdist extracted
+    inside any checkout finds that one. Accept a repo only when it is this
+    project: pyproject.toml and src/brew_hop_search/VERSION at the
+    toplevel, and the package dir underneath it. Every git-derived fact
+    (commit, count, recent log, "local" install source) goes through here;
+    anything else uses the baked _build_info.
+    """
+    try:
+        import subprocess
+        pkg_dir = Path(__file__).resolve().parent
+        r = subprocess.run(
+            ["git", "-C", str(pkg_dir), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0 or not r.stdout.strip():
+            return None
+        top = Path(r.stdout.strip()).resolve()
+        if not (top / "pyproject.toml").is_file():
+            return None
+        if not (top / "src" / "brew_hop_search" / "VERSION").is_file():
+            return None
+        try:
+            pkg_dir.relative_to(top)
+        except ValueError:
+            return None
+        return top
+    except Exception:
+        return None
+
+
 def commit_hash() -> str:
     """Short git commit hash, or empty string.
 
     Dev-tree installs resolve via `git rev-parse`. Wheel installs fall back
     to BUILD_COMMIT baked in at build time by hatch_build.py.
     """
-    try:
-        import subprocess
-        from pathlib import Path
-        pkg_dir = Path(__file__).resolve().parent
-        result = subprocess.run(
-            ["git", "-C", str(pkg_dir), "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except Exception:
-        pass
+    top = _dev_tree_git()
+    if top is not None:
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "-C", str(top), "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except Exception:
+            pass
     try:
         from brew_hop_search import _build_info
         return _build_info.BUILD_COMMIT
@@ -75,26 +118,27 @@ def _commit_count_since_tag() -> int:
     Wheel install: read BUILD_COMMIT_COUNT baked at build time.
     Returns 0 on any error (which renders the plain VERSION string).
     """
-    try:
-        import subprocess
-        pkg_dir = Path(__file__).resolve().parent
-        tag_r = subprocess.run(
-            ["git", "-C", str(pkg_dir), "describe", "--tags", "--abbrev=0"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if tag_r.returncode == 0 and tag_r.stdout.strip():
-            range_arg = f"{tag_r.stdout.strip()}..HEAD"
-        else:
-            # No tags yet — count all commits.
-            range_arg = "HEAD"
-        count_r = subprocess.run(
-            ["git", "-C", str(pkg_dir), "rev-list", "--count", range_arg],
-            capture_output=True, text=True, timeout=5,
-        )
-        if count_r.returncode == 0 and count_r.stdout.strip():
-            return int(count_r.stdout.strip())
-    except Exception:
-        pass
+    top = _dev_tree_git()
+    if top is not None:
+        try:
+            import subprocess
+            tag_r = subprocess.run(
+                ["git", "-C", str(top), "describe", "--tags", "--abbrev=0"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if tag_r.returncode == 0 and tag_r.stdout.strip():
+                range_arg = f"{tag_r.stdout.strip()}..HEAD"
+            else:
+                # No tags yet — count all commits.
+                range_arg = "HEAD"
+            count_r = subprocess.run(
+                ["git", "-C", str(top), "rev-list", "--count", range_arg],
+                capture_output=True, text=True, timeout=5,
+            )
+            if count_r.returncode == 0 and count_r.stdout.strip():
+                return int(count_r.stdout.strip())
+        except Exception:
+            pass
     try:
         from brew_hop_search import _build_info
         return int(getattr(_build_info, "BUILD_COMMIT_COUNT", 0) or 0)
@@ -130,22 +174,13 @@ def version_info() -> str:
 def install_source() -> str:
     """Where the running package came from: 'local', 'brew', 'pypi', 'unknown'.
 
-    Local = a git work tree at the package location (uv run / editable install).
-    Brew / pypi inferred from the package path.
+    Local = this project's own git work tree at the package location
+    (uv run / editable install); a *foreign* enclosing repo such as
+    Homebrew's /opt/homebrew does not count. Brew / pypi inferred from the
+    package path.
     """
-    try:
-        import subprocess
-        from pathlib import Path
-        pkg_dir = Path(__file__).resolve().parent
-        result = subprocess.run(
-            ["git", "-C", str(pkg_dir), "rev-parse", "--is-inside-work-tree"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0 and result.stdout.strip() == "true":
-            return "local"
-    except Exception:
-        pass
-    from pathlib import Path
+    if _dev_tree_git() is not None:
+        return "local"
     path = str(Path(__file__).resolve().parent)
     if "/Cellar/" in path or "/linuxbrew/" in path:
         return "brew"

@@ -137,7 +137,8 @@ def test_bg_refresh_subprocess_suppresses(monkeypatch):
 
 def test_render_footer_format():
     from brew_hop_search.timing import render_footer
-    assert render_footer(0.034) == "# [time] 0.034s"
+    line = render_footer(total=0.034, cache=0.0, api=(0, 0.0), refresh=None)
+    assert line == "# [time] total 0.034s · cache 0.000s · api(0) —"
 
 
 def test_emit_footer_writes_to_stderr(monkeypatch, capsys):

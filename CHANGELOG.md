@@ -19,10 +19,32 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
   `brewhs` and `brew-hs` beside `brew-hop-search`. Spec: short-names.md
   § brew subcommand.
 
+### Changed
+
+- **The time footer tells the whole story.** `# [time] total 0.129s ·
+  cache 0.037s · api(0) —`, with `· refresh bg` or `· refresh 1.9s` when a
+  background refresh ran. `total` runs from the package's first import,
+  not from `main()`; `cache` is the SQLite time; `api(n)` counts
+  foreground HTTP requests. The v1 footer once printed `0.134s` beside a
+  shell `time` of 2.7s. Spec: `docs/specs/features/timing.md`, which also
+  names what the process cannot see (brew's own bootstrap under `brew hs`).
+
 ### Fixed
 
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
+- **A brew install no longer reports Homebrew's own git tree.** `git -C`
+  walked up from the Cellar into `/opt/homebrew/.git`, so 0.3.7 from the
+  tap printed `0.3.7+95`, Homebrew/brew's HEAD and ten of its merge
+  commits as its own. Git facts now count only when the enclosing repo
+  *is* this project; otherwise the baked build info is the truth. The
+  build hook applies the same rule to sdists built inside other repos.
+  Spec: `docs/specs/features/version-reporting.md`.
+- `-VV` no longer says "up to date" when the local build is *ahead* of
+  PyPI: a dev tree, rc or between-tags build prints blue "ahead of PyPI";
+  a plain X.Y.Z that PyPI has never seen prints red and exits 1.
+- The commit-count version test no longer depends on whether the tree
+  has been built.
 
 ### Changed
 

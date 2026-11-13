@@ -18,7 +18,7 @@ from brew_hop_search.cache import (
     table_exists, table_updated_at, effective_db_path,
 )
 from brew_hop_search.display import (
-    bold, dim, green, yellow, cyan, magenta, red,
+    bold, dim, green, yellow, cyan, magenta, red, blue,
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, output_csv, output_tsv, output_table,
     output_sql_insert, output_multi, fmt_duration, status_line,
@@ -340,7 +340,13 @@ def _show_history(name: str, as_json: bool = False) -> None:
 
 # ── version display ─────────────────────────────────────────────────────────
 
-def _show_version(level: int) -> None:
+def _show_version(level: int) -> int:
+    """Print the version block; return the process exit status.
+
+    Non-zero only when -VV finds the tree *ahead* of PyPI with an
+    unqualified version (plain X.Y.Z, no -dev/+N/rc): that is a release
+    PyPI has never seen, which the release guards exist to prevent.
+    """
     from brew_hop_search import (
         __version__, commit_hash, install_source, user_agent, version_info,
         PYPI_URL, GITHUB_URL, BREW_TAP_URL,
@@ -349,7 +355,7 @@ def _show_version(level: int) -> None:
     v = version_info()
     print(f"brew-hop-search {v}")
     if level < 2:
-        return
+        return 0
     if level >= 2:
         h = commit_hash()
         print(f"  {bold('version')}     {v}")
@@ -361,20 +367,24 @@ def _show_version(level: int) -> None:
         print(f"  {bold('github')}      {GITHUB_URL}")
         if BREW_TAP_URL:
             print(f"  {bold('tap')}         {BREW_TAP_URL}")
-        # Show git commit log
-        import subprocess
-        try:
-            pkg_dir = Path(__file__).resolve().parent
-            result = subprocess.run(
-                ["git", "-C", str(pkg_dir), "log", "--oneline", "-10"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                print(f"\n{bold('recent commits')}")
-                for line in result.stdout.strip().splitlines():
-                    print(f"  {dim(line)}")
-        except Exception:
-            pass
+        # Recent commits: only from this project's own checkout. A brew
+        # install sits inside Homebrew's repo and would otherwise list
+        # Homebrew/brew's log here (seen on 0.3.7 from the tap).
+        import brew_hop_search as _pkg
+        top = _pkg._dev_tree_git()
+        if top is not None:
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ["git", "-C", str(top), "log", "--oneline", "-10"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    print(f"\n{bold('recent commits')}")
+                    for line in result.stdout.strip().splitlines():
+                        print(f"  {dim(line)}")
+            except Exception:
+                pass
         # Live PyPI version check. -VV means "tell me the truth, now": no
         # cache short-circuit (unlike check_if_due), a longer timeout since
         # the user is waiting, and a write-back so the background check
@@ -390,27 +400,47 @@ def _show_version(level: int) -> None:
                 cur_v = _parse_version(v)
                 latest_v = _parse_version(latest)
                 if cur_v and latest_v and latest_v > cur_v:
+                    # Behind: the usual upgrade hint.
                     print(f"{bold('pypi')}  {yellow(latest)} available (current: {v})")
                     print(dim(f"  pip install -U brew-hop-search"))
+                elif cur_v and latest_v and cur_v > latest_v:
+                    # Ahead: a dev tree, an rc, or a build between tags.
+                    # Never "up to date" -- that word is for equality.
+                    qualified = (cur_v.is_prerelease or cur_v.is_devrelease
+                                 or cur_v.local is not None)
+                    if qualified:
+                        print(f"{bold('pypi')}  {blue('ahead of PyPI')} "
+                              f"(local {v}, pypi {latest})")
+                    else:
+                        # Plain X.Y.Z that PyPI has never seen: either an
+                        # unpublished release or a tree that forgot its
+                        # -dev suffix. Balk.
+                        print(f"{bold('pypi')}  {red(f'{v} is not on PyPI')} "
+                              f"(latest {latest}): unqualified version ahead "
+                              f"of the index")
+                        print(dim("  expected -dev or +N here; see "
+                                  "DEVELOPMENT.md § Version invariant"))
+                        return 1
                 else:
                     print(f"{bold('pypi')}  {green('up to date')} ({latest})")
             else:
                 print(f"{bold('pypi')}  {dim('could not determine latest version')}")
         except Exception as e:
             print(f"{bold('pypi')}  {dim(f'check failed: {e}')}")
+    return 0
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
-    _t0 = time.monotonic()
     _args_holder: list = []  # populated post-parse so the finally can read it
     try:
         return _main_inner(argv, _args_holder)
     finally:
         if _args_holder:
-            from brew_hop_search.timing import emit_footer
-            emit_footer(_args_holder[0], time.monotonic() - _t0)
+            from brew_hop_search.timing import emit_footer, process_start
+            # total = whole run from the package's first import, not main().
+            emit_footer(_args_holder[0], time.monotonic() - process_start())
 
 
 def _main_inner(argv, _args_holder):
@@ -606,8 +636,7 @@ def _main_inner(argv, _args_holder):
 
     # ── version mode ──
     if args.version:
-        _show_version(args.version)
-        return
+        return _show_version(args.version)
 
     # ── cache status ──
     if args.cache:
@@ -807,7 +836,9 @@ def _main_inner(argv, _args_holder):
         if verbose >= 3:
             print(dim(f"  [{kind}] searching {source_count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
         # Fetch limit+1 to detect truncation
-        results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
+        from brew_hop_search.timing import Timer
+        with Timer("cache"):
+            results = search(db, kind, query, limit + 1, pk_col=pk_col, offset=offset)
         truncated = len(results) > limit
         if truncated:
             results = results[:limit]
