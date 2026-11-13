@@ -14,10 +14,10 @@ reasoning and history live in `docs/meta/`.
   time for a release") is not an authorization.
 - `main` holds only tagged releases, fast-forwarded by the owner. Agents
   never push it.
-- `dev` is release-prep and the owner's: agents never push it. The lane
-  agents push is **`dev-unstable`**: fast-forward commits there, and work
-  branches, once the suite passes. PRs target `dev-unstable`; the owner
-  fast-forwards `dev` from it when preparing a release.
+- `dev` is release-prep and the owner's: agents never push it. Agents push
+  work branches once the suite passes and open PRs **into `dev`**; the
+  owner merges them. `dev-unstable` is an optional agent lane for stacking
+  or previewing combined work; nothing has to pass through it.
 - Branch names follow Conventional Commits types: `<type>/<slug>`, with
   an optional grouping segment `<type>/<group>/<slug>` for a session or a
   theme (`feat/brew-hs`, `fix/foreign-git-tree`, `docs/meta`,

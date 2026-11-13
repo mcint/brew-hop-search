@@ -4,9 +4,8 @@ date: 2026-11-12
 kind: procedure
 tldr: >
   Declaring a version is the owner's act: pushing a `vX.Y.Z` tag, creating
-  the GitHub release, uploading to PyPI, and moving `main`. Agents work on
-  `dev-unstable`, prepare a release there, and stop at "ready to tag"; the
-  owner fast-forwards `dev` from it. Publishing is local today
+  the GitHub release, uploading to PyPI, and moving `main`. Agents open PRs
+  into `dev`, the owner merges them, and agents stop at "ready to tag". Publishing is local today
   because the Actions publish job has never had a trusted publisher; the
   owner runs `make publish` after the tag. `-rcN` and `tag-draft/vX.Y.Z` tags
   are the visible markers for anything that is not an official version.
@@ -23,8 +22,8 @@ come from.
 | Step | Actor |
 |---|---|
 | Write the changelog narrative, promote VERSION, run the suite, regenerate README, build `dist/`, create a local tag | agent or owner |
-| Push `dev-unstable` and `<type>/<slug>` work branches after the suite passes | agent or owner |
-| Fast-forward `dev` from `dev-unstable` (accept the block) | owner only |
+| Push `<type>/<slug>` work branches and open PRs into `dev` after the suite passes | agent or owner |
+| Merge PRs into `dev` (accept the block) | owner only |
 | Push an `-rcN` or `tag-draft/vX.Y.Z` tag | agent or owner |
 | Review the test run on the release commit | owner |
 | Push `vX.Y.Z` | owner only |
@@ -39,9 +38,9 @@ Agents stop before the `git push origin vX.Y.Z` line, always.
 | ref | holds | moved by | pushed by agents? |
 |---|---|---|---|
 | `main` | one commit per release, each tagged `vX.Y.Z`; fast-forwarded from `dev` | the owner | never |
-| `dev` | release-prep: the block the owner accepted; always green | the owner, from `dev-unstable` | never |
-| `dev-unstable` | integration: PRs land here; may run ahead of `dev` | agents and owner | yes, fast-forward only |
-| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; PR into `dev-unstable` (BRANCH-MODEL.md § Branch names) | agents and owner | yes |
+| `dev` | release-prep: the block the owner accepted; always green | the owner, by merging PRs | never |
+| `dev-unstable` | optional agent lane for stacked or combined work | agents and owner | yes, fast-forward only |
+| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; PR into `dev` (BRANCH-MODEL.md § Branch names) | agents and owner | yes |
 | `vX.Y.Z` tag | official version | the owner, after reviewing the test run | never |
 | `vX.Y.Z-rcN` tag | candidate for review; builds, publishes to TestPyPI only | agents or owner | yes |
 | `tag-draft/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
@@ -132,7 +131,7 @@ already names it: `## [0.3.8]` while `VERSION` reads `0.3.8-dev`. Not
 "Unreleased", not "unreleased": being on a branch is a state of the world,
 and the repo does not encode it; the version invariant already guarantees
 the heading is unique. The release step adds the date. Every PR into
-`dev-unstable` adds its bullets under that one heading, so PRs merge
+`dev` adds its bullets under that one heading, so PRs merge
 without a heading conflict.
 
 ## Open

@@ -46,9 +46,9 @@ Definitely:
   3.13 is a library-default change, not a flake: key the snapshot by the
   measured version threshold in the one test (as `test_help` does), do
   not shim the behaviour and do not skip the version.
-- PR targets `dev-unstable`, never `dev`.
+- PR targets `dev`. Agents never push `dev` itself.
 - `CHANGELOG.md` merges under the one `## [next]` heading; after merging
-  `dev-unstable` in, read the top section once as a whole.
+  `dev` in, read the top section once as a whole.
 - Branch named `<type>/[<group>/]<slug>`; PR title is the squash
   message.
 - Beads: `br sync --flush-only` and the jsonl committed (on dev today; on

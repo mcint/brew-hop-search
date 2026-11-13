@@ -5,8 +5,8 @@ kind: spec
 tldr: >
   Three lanes. `main` is the default branch and holds exactly the tagged
   releases, moved only by the owner. `dev` is release-prep, also only the
-  owner's. `dev-unstable` is where agent work integrates and PRs land;
-  the owner fast-forwards `dev` from it. Agents push `dev-unstable`,
+  owner's: PRs land there and the owner merges them. `dev-unstable` is an
+  optional agent lane. Agents push `dev-unstable`,
   `<type>/<slug>` branches, `-rcN` and `tag-draft/*` tags. CI runs the
   suite on every branch and PR; the release workflow
   tests before it publishes. Not full git-flow: no `release/*` branches,
@@ -25,9 +25,9 @@ but something more this direction."
 | ref | holds | moved by | pushed by agents? |
 |---|---|---|---|
 | `main` | one commit per release, each tagged `vX.Y.Z`; fast-forward from `dev` at release time | the owner | never |
-| `dev` | release-prep: the block the owner has accepted for the next version; always green | the owner, by fast-forward from `dev-unstable` | never |
-| `dev-unstable` | integration: PRs land here, agents fast-forward here; may run ahead of `dev` | agents and owner | yes, fast-forward only |
-| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; PR into `dev-unstable` | agents and owner | yes |
+| `dev` | release-prep: the block the owner has accepted for the next version; always green | the owner, by merging PRs | never |
+| `dev-unstable` | optional agent lane: stack or preview combined work; may run ahead of `dev`; nothing has to pass through it | agents and owner | yes, fast-forward only |
+| `<type>/[<group>/]<slug>` | one feature, fix, doc or chore; PR into `dev` | agents and owner | yes |
 | `vX.Y.Z` tag | official version | the owner, after reviewing the test run on the release commit | never |
 | `vX.Y.Z-rcN` tag | candidate for review; builds, publishes to TestPyPI only | agents or owner | yes |
 | `tag-draft/vX.Y.Z` tag | "an agent thinks this is the release commit"; no workflow fires | agents | yes |
@@ -54,17 +54,20 @@ branch. Visitors land on the latest release, which is what "main only
 shows releases" already implies, and GitHub's default-branch conventions
 (README render, PR base) favour it. The owner protects it: pushes
 restricted to the owner, no force-push, CI check required. PRs target
-`dev-unstable`, set per PR or by a repo rule.
+`dev`, set per PR or by a repo rule.
 
 ## Why a third lane (decided 2026-11-13)
 
 On 2026-11-12 the owner said agents should not push `dev`: "dev is
 release-prep. We should find something else to push." `dev-unstable` is
 that something. The split is about who declares: `dev` is what the owner
-has accepted for the next release, `dev-unstable` is everything proposed
-and green. The name says both halves, a lane under `dev` and not yet
-settled; it was the owner's own word, preferred over git.git's `next`
-and Debian's `sid`, which need a reference to read.
+has accepted for the next release, `dev-unstable` is where agents may put
+combined, green work to look at. Revised the same day (owner: "I want to
+merge things into the new dev ... I don't care to merge them into
+dev-unstable per se"): PRs go straight to `dev`; the lane is optional.
+The name says both halves, a lane under `dev` and not yet settled; it was
+the owner's own word, preferred over git.git's `next` and Debian's `sid`,
+which need a reference to read.
 
 The alternative, renaming to `release` and making `dev` the default, was
 set aside. The word "release" is already taken by tags and by the proposed
@@ -85,7 +88,7 @@ link to `main`, the CI trigger, and `git fetch . dev:main` would change.
 ## Release procedure
 
 See RELEASING.md for the owner's command sequence and the reasoning. In
-short: `git fetch . dev-unstable:dev` for the commits being accepted,
+short: merge the PRs into `dev`,
 `make release --skip-publish` on `dev`, push `dev`, review, push
 `vX.Y.Z`, `git fetch . dev:main && git push origin main`. Agents stop
 before the tag push and may leave a `tag-draft/vX.Y.Z` pointer on the same
@@ -100,8 +103,8 @@ linear: fast-forward or rebase, never merge commits.
 
 ## Open
 
-- Direct pushes to `dev-unstable` by agents, or PRs only? Default: PRs
-  for features, direct fast-forward for chores, both after the suite.
+- Does `dev-unstable` earn its keep, or retire once PRs to `dev` are the
+  norm? Default: keep it, unused unless stacking.
 - Where does the version bump live: a commit on `dev` before the tag (as
   today) or set by the tag (hatch-vcs style)? Default: as today. The
   VERSION file is the single source and `-VVV` reads it.
