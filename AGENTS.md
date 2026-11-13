@@ -14,14 +14,16 @@ reasoning and history live in `docs/meta/`.
   time for a release") is not an authorization.
 - `main` holds only tagged releases, fast-forwarded by the owner. Agents
   never push it.
-- `dev` is the integration lane. Agents may push fast-forward commits and
-  work branches once the suite passes.
+- `dev` is release-prep and the owner's: agents never push it. The lane
+  agents push is **`dev-unstable`**: fast-forward commits there, and work
+  branches, once the suite passes. PRs target `dev-unstable`; the owner
+  fast-forwards `dev` from it when preparing a release.
 - Branch names follow Conventional Commits types: `<type>/<slug>`, with
   an optional grouping segment `<type>/<group>/<slug>` for a session or a
   theme (`feat/brew-hs`, `fix/foreign-git-tree`, `docs/meta`,
   `chore/2026-11-12/dev-rebuild`). Types: feat, fix, docs, chore, ci,
-  test, refactor, spec. `draft/*` is local-only; `main` and `dev` are the
-  only bare names.
+  test, refactor, spec. `draft/*` is local-only; `main`, `dev` and
+  `dev-unstable` are the only lane names.
 - Pre-release or agent-marked tags may be pushed (`-rcN`; `tag-draft/…`
   once the convention is settled). Plain `vX.Y.Z` may not.
 - Never hand-run a step that `scripts/release.sh` deliberately skipped.

@@ -41,11 +41,14 @@ Check:
 ## Per PR
 
 Definitely:
-- CI green on every matrix entry (3.9, 3.15). A snapshot that
-  passes on 3.12 and fails on 3.13 is a formatter dependency, not a
-  flake; pin the rendering in code, do not skip the version.
+- CI green on every matrix entry (3.9, 3.15); `make test-all` before a
+  PR that touches output. A snapshot that passes on 3.12 and fails on
+  3.13 is a library-default change, not a flake: key the snapshot by the
+  measured version threshold in the one test (as `test_help` does), do
+  not shim the behaviour and do not skip the version.
+- PR targets `dev-unstable`, never `dev`.
 - `CHANGELOG.md` merges under the one `## [next]` heading; after merging
-  `dev` in, read the top section once as a whole.
+  `dev-unstable` in, read the top section once as a whole.
 - Branch named `<type>/[<group>/]<slug>`; PR title is the squash
   message.
 - Beads: `br sync --flush-only` and the jsonl committed (on dev today; on
