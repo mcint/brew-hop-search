@@ -61,7 +61,7 @@ link to `main`, the CI trigger, and `git fetch . dev:main` would change.
 ## Workflows
 
 - `ci.yml`: on push to any branch and on PR. `uv sync`, suite, smoke test,
-  matrix 3.9/3.12/3.13. Today it runs only on `main` and PRs, so `dev` and
+  matrix 3.9/3.15. Today it runs only on `main` and PRs, so `dev` and
   work-branch pushes go untested; the trigger widens to all branches.
 - `release.yml`: on `v*` tags only. Job order: test (same matrix, at the
   tag), then build, then publish. `-rc*` tags publish to TestPyPI; plain

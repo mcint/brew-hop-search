@@ -41,7 +41,7 @@ Check:
 ## Per PR
 
 Definitely:
-- CI green on every matrix entry (3.9, 3.12, 3.13). A snapshot that
+- CI green on every matrix entry (3.9, 3.15). A snapshot that
   passes on 3.12 and fails on 3.13 is a formatter dependency, not a
   flake; pin the rendering in code, do not skip the version.
 - `CHANGELOG.md` merges under the one `## [next]` heading; after merging

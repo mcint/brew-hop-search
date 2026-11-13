@@ -103,7 +103,7 @@ does not leak into examples.
 Context: the dev shell needed a predictable interpreter, but a pin can
 quietly become a floor.
 Decision: pin the dev interpreter with `.python-version`; let the CI
-matrix (3.9/3.12/3.13) measure the real floor; the pin never narrows
+matrix (3.9/3.15) measure the real floor; the pin never narrows
 `requires-python`.
 Consequence: `requires-python` changes only when a dependency forces it
 and the matrix shows it. Global rule: "let a matrix, not a pin, say what
