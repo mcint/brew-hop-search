@@ -31,6 +31,23 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 ### Fixed
 
+- **`-i` shows the version you have, not the one you could get.**
+  `bhs -i flux` printed `2.10.0` with `2.9.5` installed: every output
+  format read `versions.stable` from `brew info`, which is the available
+  version. Present since the package restructure, so 0.3.7 had it too.
+  Results from `-i` now carry `installed_version` (linked keg, else the
+  newest keg; casks: `installed`), also in `--json`.
+- **`-O` no longer confuses a tap formula with its core namesake.**
+  `fluxcd/tap/flux 2.9.5` was compared against homebrew/core's unrelated
+  `flux 0.201.0` and reported as outdated; tap-only formulae were
+  skipped. Tap formulae now use their full name (as `brew outdated`
+  does) and their tap's own version, and tap casks their tap's version.
+  On one real install, `-O --brew-verify` went from `~1 +11 -3` to `~1`
+  on formulae.
+- **`-O` compares versions, not strings.** An install newer than the
+  cached index (you upgraded with a fresher brew) is no longer
+  "outdated"; HEAD installs are skipped as brew skips them. Cask
+  `version,build` strings compare segment by segment.
 - The tap is `brew tap mcint/tap` (repo `mcint/homebrew-tap`); README
   and `-VV` pointed at a tap that does not exist.
 - **A brew install no longer reports Homebrew's own git tree.** `git -C`
