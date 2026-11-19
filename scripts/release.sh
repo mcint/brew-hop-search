@@ -117,9 +117,11 @@ fi
 echo
 
 # ── Step 1: Test ─────────────────────────────────────────────
-echo "── Step 1: Run tests ──────────────────────────────────"
-run uv run python -m pytest tests/ -x -q --tb=short
-echo "✓ Tests passed"
+echo "── Step 1: Run tests on every Python ──────────────────"
+# CI covers the floor and the newest stable; a release also checks every
+# version in between (Makefile PYTHONS). Ephemeral envs, so slow on 3.9.
+run make test-all
+echo "✓ Tests passed on every Python"
 echo
 
 # ── Step 2: Review changes ───────────────────────────────────

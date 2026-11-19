@@ -68,7 +68,8 @@ Check:
 Definitely, in order:
 1. `dev` green on CI, changelog section read and dated
    (`## [0.3.8] — YYYY-MM-DD`).
-2. `make release --skip-publish`: promotes `VERSION`, runs the suite,
+2. `make release --skip-publish`: promotes `VERSION`, runs the suite on
+   every Python (`make test-all`),
    regenerates README under a clean env, tags locally, builds `dist/`.
 3. Review: `git log v<prev>..dev`, the wheel's `_build_info.py`
    (`unzip -p dist/*.whl 'brew_hop_search/_build_info.py'`), the
