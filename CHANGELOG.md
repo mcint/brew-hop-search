@@ -24,9 +24,9 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 
 ### Changed
 
-- Dev interpreter pinned to 3.12 via `.python-version`. CI tests the
-  floor and the newest stable, 3.9 and 3.15; `make test-all` runs every
-  Python in between.
+- Dev interpreter pinned to the newest stable, 3.15, via
+  `.python-version`. CI tests the floor and the newest stable, 3.9 and
+  3.15; `make test-all` runs every Python in between, and releases run it.
 - **The time footer tells the whole story.** `# [time] total 0.129s ·
   cache 0.037s · api(0) —`, with `· refresh bg` or `· refresh 1.9s` when a
   background refresh ran. `total` runs from the package's first import,
