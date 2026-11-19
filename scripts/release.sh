@@ -137,6 +137,30 @@ fi
 echo
 confirm "Review complete. Ready to tag?" || { echo "Aborted."; exit 1; }
 
+# ── Step 2.5: Refresh README from live output (clean env) ────
+# README.md is generated from README.md.template + live command output.
+# Regenerate here so the tag ships current examples. Run under a clean
+# env (env -i + minimal allowlist) so a bad-citizen shell — e.g. a
+# zerobrew that dangles SSL_CERT_FILE — can't bleed warnings into the
+# captured blocks. Allowlist only what bhs/uv/unicode output need.
+echo
+echo "── Step 2.5: Regenerate README ────────────────────────"
+if $DRY; then
+    echo "(dry-run: would regen README.md via clean-env build-readme.sh, commit if changed)"
+else
+    env -i HOME="$HOME" PATH="$PATH" TERM="${TERM:-dumb}" \
+        LANG="${LANG:-en_US.UTF-8}" LC_ALL="${LC_ALL:-${LANG:-en_US.UTF-8}}" \
+        ./scripts/build-readme.sh > README.md
+    if git diff --quiet README.md; then
+        echo "✓ README already current"
+    else
+        git add README.md
+        git commit -m "Regenerate README for v${VERSION}" -q
+        echo "✓ README refreshed and committed"
+    fi
+fi
+echo
+
 # ── Step 3: Tag ──────────────────────────────────────────────
 echo
 echo "── Step 3: Tag ──────────────────────────────────────"
