@@ -374,3 +374,34 @@ def test_help_group_order(outdatedb):
     cache_i = out.index("cache:")
     output_i = out.index("output:")
     assert src_i < info_i < cache_i < output_i
+
+
+# ── name filter: -O [terms] (bhs-9ev) ──────────────────────────────────────
+
+def test_outdated_name_filter(snap, outdatedb):
+    """-O python: only outdated packages whose name matches the term."""
+    output = _run(outdatedb, "-O", "python")
+    assert "python@3.13" in output
+    assert "wget" not in output
+    assert "firefox" not in output
+    snap.assert_match(output)
+
+
+def test_outdated_name_filter_grammar(outdatedb):
+    """Anchors and negation follow the search grammar; casks match on token."""
+    assert "wget" in _run(outdatedb, "-O", "^wget")
+    assert "python" not in _run(outdatedb, "-O", "^wget")
+    neg = _run(outdatedb, "-O", "!python")
+    assert "python" not in neg and "wget" in neg and "firefox" in neg
+    assert "firefox" in _run(outdatedb, "-O", "fire")
+
+
+def test_outdated_name_filter_json(outdatedb):
+    """Filter applies before JSON output too."""
+    data = json.loads(_run(outdatedb, "-O", "--json", "fire"))
+    assert [c["name"] for c in data["casks"]] == ["firefox"]
+    assert data["formulae"] == []
+
+
+def test_help_outdated_mentions_name_filter(outdatedb):
+    assert "filter by name" in _run(outdatedb, "--help")

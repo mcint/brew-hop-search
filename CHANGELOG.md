@@ -9,6 +9,12 @@ Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ## [0.3.8]
 
+### Added
+
+- **`-O` takes name terms.** `bhs -O python` narrows the outdated list
+  to names matching the search grammar (`^prefix`, `suffix$`, `!negate`),
+  AND-matched, before any output format. Spec: INPUT.md § Query.
+
 ### Fixed
 
 - The commit-count version test no longer depends on whether the tree
