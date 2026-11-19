@@ -60,10 +60,17 @@ CREATE TABLE [installed_formula] (
    [name] TEXT PRIMARY KEY,
    [desc] TEXT,
    [homepage] TEXT,
-   [version] TEXT,
+   [version] TEXT,             -- the INSTALLED version (see below)
    [raw] TEXT                  -- full brew info JSON
 );
 ```
+
+`version` here is what is on disk, not what is available: for formulae
+`linked_keg`, else the last `installed[].version`; for casks `installed`.
+`brew info` also carries the available version (`versions.stable`,
+cask `version`), but that stays in `raw`. Before 0.3.8, the column held
+the available version, so `-i` printed the version you could upgrade to
+as if it were installed.
 
 FTS5: `installed_formula_fts` on `(name, desc)`, porter tokenizer.
 `installed_cask` uses `token` as PK, FTS on `(token, name, desc)`.

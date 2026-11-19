@@ -153,7 +153,34 @@ Compares installed index (`-i` cache) against API index:
 - **Formulae**: Compare `version` + `_revision` from raw JSON
 - **Casks**: Compare `version` string directly
 - **Excluded**: Casks with `version "latest"`
-- **Invisible**: Tap-only formulae not in the main API index
+- **Tap formulae** (`tap` is not `homebrew/core`): named by `full_name`
+  (`fluxcd/tap/flux`), the way `brew outdated` names them, and compared
+  against their own `versions.stable` + `revision` in the installed JSON
+  (read from the local tap clone). They are never matched against a
+  homebrew/core formula with the same short name: core's `flux` is an
+  unrelated project. Tap casks (`tap` is not `homebrew/cask`) compare
+  against their own `version` too, but keep the short token as their
+  name, because that is how `brew outdated` names casks, even from taps.
+- **HEAD installs** (`HEAD-<sha>`) are skipped, as `brew outdated` does
+  without `--fetch-HEAD`.
+- **Newer than the index is not outdated.** When the installed version
+  orders *after* the cached index version (the index is stale: you
+  upgraded with a fresher brew), the entry is dropped. Ordering splits
+  on `_revision`, then compares numeric runs as integers and alpha runs
+  as strings; a prerelease tail (`1.0rc1`) sorts before its release.
+  When the two strings differ but neither orders after the other, the
+  entry is reported, as before: inequality is the fallback, never
+  silence.
+
+Examples:
+
+| installed | index | outdated? | why |
+|---|---|---|---|
+| `3.13.1` | `3.13.2` | yes | older |
+| `1.24.5` | `1.24.5_1` | yes | revision bump |
+| `21.7.0` | `21.6.1` | no | index is stale |
+| `fluxcd/tap/flux 2.9.5` | tap's `2.10.0` (core: `0.201.0`) | yes, → `2.10.0` | tap formula, own version |
+| `borkdude/brew/jet 0.7.27` | tap's `0.7.27` (core: `2.16.1`) | no | tap formula, current |
 
 ### Authoritative Mode / Diff (`--brew-verify`)
 
@@ -165,7 +192,7 @@ output is a package-matched diff showing where they agree and disagree.
   ~ python@3.13  3.13.1 → 3.13.2
   ~ node  21.6.0 → 21.6.1  [pinned]
   ~ wget  1.24.4 → 1.24.5_1|1.24.5  [keg-only]
-  + tap-only-pkg  1.0 → 1.1  [brew-only]
+  + bottle-rebuild  1.0 → 1.0  [brew-only]
   - false-positive  2.0 → 2.1  [bhs-only]
 ```
 

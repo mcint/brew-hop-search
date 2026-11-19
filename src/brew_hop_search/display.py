@@ -170,10 +170,20 @@ def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,
     return line
 
 
+def item_version(item: dict, cask: bool) -> str:
+    """The version to show: installed when the result came from -i
+    (cli sets `installed_version`), else what the index offers."""
+    if item.get("installed_version"):
+        return item["installed_version"]
+    if cask:
+        return str(item.get("version") or "")
+    return (item.get("versions") or {}).get("stable") or item.get("version") or ""
+
+
 def fmt_formula(f: dict) -> str:
     return _fmt_entry(
         bold(green(f["name"])),
-        f.get("versions", {}).get("stable", ""),
+        item_version(f, cask=False),
         f.get("desc", ""),
         f.get("homepage", ""),
     )
@@ -182,7 +192,7 @@ def fmt_formula(f: dict) -> str:
 def fmt_cask(f: dict) -> str:
     return _fmt_entry(
         bold(cyan(f.get("token", ""))),
-        str(f.get("version", "")),
+        item_version(f, cask=True),
         f.get("desc", ""),
         f.get("homepage", ""),
     )
@@ -322,11 +332,7 @@ def output_grep(all_results: list[tuple]) -> None:
     for kind, results, *_ in all_results:
         for item in results:
             slug = item.get("token") or item.get("name", "")
-            ver = (
-                str(item.get("version", ""))
-                if kind == "cask"
-                else (item.get("versions") or {}).get("stable", "")
-            )
+            ver = item_version(item, cask=kind.endswith("cask"))
             url = item.get("homepage", "")
             desc = item.get("desc") or ""
             print(f"{slug}\t{ver}\t{url}")
@@ -437,11 +443,7 @@ def _extract_row(kind: str, item: dict) -> dict:
         name = item["token"]
     else:
         name = item.get("name") or ""
-    if kind == "cask":
-        ver = str(item.get("version") or "")
-    else:
-        versions = item.get("versions") or {}
-        ver = versions.get("stable") or item.get("version") or ""
+    ver = item_version(item, cask=kind.endswith("cask"))
     return {
         "source": kind.split("_")[-1][0] if "_" in kind else kind[0],
         "name": name or "",

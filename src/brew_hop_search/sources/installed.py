@@ -39,6 +39,38 @@ def _brew_installed_json(timeout: int = _FG_TIMEOUT) -> dict:
     return json.loads(result.stdout)
 
 
+def installed_formula_version(item: dict) -> str:
+    """The version on disk: the linked keg, else the newest installed keg."""
+    if item.get("linked_keg"):
+        return item["linked_keg"]
+    kegs = item.get("installed") or []
+    return kegs[-1].get("version", "") if kegs else ""
+
+
+def formula_row(item: dict) -> dict:
+    """installed_formula row; `version` is installed, not available."""
+    return {
+        "name": item.get("name", ""),
+        "desc": item.get("desc") or "",
+        "homepage": item.get("homepage", ""),
+        "version": installed_formula_version(item),
+        "raw": json.dumps(item),
+    }
+
+
+def cask_row(item: dict) -> dict:
+    """installed_cask row; `version` is installed, not available."""
+    name = item.get("name")
+    return {
+        "token": item.get("token", ""),
+        "name": json.dumps(name) if isinstance(name, list) else str(name or ""),
+        "desc": item.get("desc") or "",
+        "homepage": item.get("homepage", ""),
+        "version": str(item.get("installed") or ""),
+        "raw": json.dumps(item),
+    }
+
+
 def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
     prefix = "[installed]"
     if not silent:
@@ -51,16 +83,7 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
         formulae = data.get("formulae", [])
         if not silent:
             status_line(dim(f"  {prefix} indexing {len(formulae)} formulae \u2026"))
-        formula_rows = [
-            {
-                "name": item.get("name", ""),
-                "desc": item.get("desc") or "",
-                "homepage": item.get("homepage", ""),
-                "version": (item.get("versions") or {}).get("stable", ""),
-                "raw": json.dumps(item),
-            }
-            for item in formulae
-        ]
+        formula_rows = [formula_row(item) for item in formulae]
         import_to_db(db, "installed_formula", formula_rows,
                       list(formula_rows[0].keys()) if formula_rows else [],
                       "name", ["name", "desc"])
@@ -69,17 +92,7 @@ def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
         casks = data.get("casks", [])
         if not silent:
             status_line(dim(f"  {prefix} indexing {len(casks)} casks \u2026"))
-        cask_rows = [
-            {
-                "token": item.get("token", ""),
-                "name": json.dumps(item.get("name")) if isinstance(item.get("name"), list) else str(item.get("name", "")),
-                "desc": item.get("desc") or "",
-                "homepage": item.get("homepage", ""),
-                "version": str(item.get("version", "")),
-                "raw": json.dumps(item),
-            }
-            for item in casks
-        ]
+        cask_rows = [cask_row(item) for item in casks]
         import_to_db(db, "installed_cask", cask_rows,
                       list(cask_rows[0].keys()) if cask_rows else [],
                       "token", ["token", "name", "desc"])
