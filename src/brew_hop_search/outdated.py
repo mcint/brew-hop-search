@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 
 from brew_hop_search.cache import get_db, table_count, table_exists
+from brew_hop_search.sources.installed import installed_formula_version
 from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, red, magenta, status_line, _envelope,
 )
@@ -35,6 +37,56 @@ def _version_with_rev(version: str, revision: int) -> str:
     return version
 
 
+_VER_TOKEN = re.compile(r"\d+|[A-Za-z]+")
+_REV_SUFFIX = re.compile(r"_(\d+)$")
+
+
+def _ver_key(v: str) -> tuple[list, int]:
+    m = _REV_SUFFIX.search(v)
+    base, rev = (v[:m.start()], int(m.group(1))) if m else (v, 0)
+    toks = [int(t) if t.isdigit() else t.lower() for t in _VER_TOKEN.findall(base)]
+    return toks, rev
+
+
+def _cmp_segment(a: str, b: str) -> int | None:
+    """-1/0/1 for one comma-free segment; None when not orderable."""
+    (ta, ra), (tb, rb) = _ver_key(a), _ver_key(b)
+    for x, y in zip(ta, tb):
+        if x == y:
+            continue
+        if type(x) is not type(y):
+            return None
+        return 1 if x > y else -1
+    if len(ta) != len(tb):
+        # The longer one has a tail: numeric = newer, alpha = prerelease.
+        tail = (ta if len(ta) > len(tb) else tb)[min(len(ta), len(tb))]
+        return 1 if isinstance(tail, int) == (len(ta) > len(tb)) else -1
+    return (ra > rb) - (ra < rb)
+
+
+def version_newer(a: str, b: str) -> bool:
+    """True when version `a` provably orders after `b` (brew-ish ordering).
+
+    Cask `version,build` strings compare segment by segment. Within a
+    segment, numeric runs compare as integers, alpha runs as strings; a
+    release beats its prerelease tail (`1.0` > `1.0rc1`); `_N` revision
+    breaks ties. A number facing letters is not orderable: returns
+    False, so callers fall back to plain inequality.
+    """
+    for sa, sb in zip(a.split(","), b.split(",")):
+        c = _cmp_segment(sa, sb)
+        if c is None:
+            return False
+        if c:
+            return c > 0
+    return a.count(",") > b.count(",")
+
+
+def _is_outdated(installed: str, current: str) -> bool:
+    """Differs, and the install is not provably newer (a stale index)."""
+    return installed != current and not version_newer(installed, current)
+
+
 def collect_outdated_fast() -> dict:
     """Compare installed vs API index using raw JSON (no brew subprocess).
 
@@ -44,7 +96,7 @@ def collect_outdated_fast() -> dict:
     Limitations vs `brew outdated`:
     - Does not check bottle rebuild numbers
     - Does not evaluate `pour_bottle_only_if` conditions
-    - Tap-only formulae not in the main API index are skipped
+    - Tap formulae compare against the local tap clone, not the API
     Use --brew-verify to cross-check.
     """
     db = get_db()
@@ -67,21 +119,26 @@ def collect_outdated_fast() -> dict:
             pinned = raw.get("pinned", False)
             keg_only = raw.get("keg_only", False)
 
-            # Get installed version(s) from the installed array
-            installed_list = raw.get("installed") or []
-            if not installed_list:
-                continue
-            installed_ver = installed_list[0].get("version", "")
+            installed_ver = installed_formula_version(raw)
+            if not installed_ver or installed_ver.startswith("HEAD"):
+                continue  # HEAD installs: brew skips them without --fetch-HEAD
 
-            # Compare against API
-            if name not in api_versions:
-                continue  # tap-only formula, not in main index
-            api_ver, api_rev = api_versions[name]
+            tap = raw.get("tap") or "homebrew/core"
+            if tap != "homebrew/core":
+                # Tap formula: its own version (from the local tap clone),
+                # named as brew outdated names it. Core's namesake is unrelated.
+                name = raw.get("full_name") or name
+                api_ver = (raw.get("versions") or {}).get("stable", "")
+                api_rev = raw.get("revision", 0)
+            elif name in api_versions:
+                api_ver, api_rev = api_versions[name]
+            else:
+                continue
             if not api_ver:
                 continue
             api_full = _version_with_rev(api_ver, api_rev)
 
-            if installed_ver != api_full:
+            if _is_outdated(installed_ver, api_full):
                 entry = {
                     "name": name,
                     "installed_versions": [installed_ver],
@@ -104,11 +161,19 @@ def collect_outdated_fast() -> dict:
         for row in db.execute("SELECT raw FROM installed_cask").fetchall():
             raw = json.loads(row[0])
             token = raw.get("token", "")
-            installed_ver = str(raw.get("installed", ""))
-            if not installed_ver or token not in api_cask_versions:
+            installed_ver = str(raw.get("installed") or "")
+            if not installed_ver:
                 continue
-            api_ver = api_cask_versions[token]
-            if installed_ver != api_ver and api_ver != "latest":
+            tap = raw.get("tap") or "homebrew/cask"
+            if tap != "homebrew/cask":
+                # Tap cask: its own version. brew outdated names casks by
+                # short token even from taps (unlike formulae), so keep it.
+                api_ver = str(raw.get("version") or "")
+            elif token in api_cask_versions:
+                api_ver = api_cask_versions[token]
+            else:
+                continue
+            if api_ver and api_ver != "latest" and _is_outdated(installed_ver, api_ver):
                 outdated_casks.append({
                     "name": token,
                     "installed_versions": [installed_ver],

@@ -313,6 +313,16 @@ def show_cache_status_json() -> None:
 
 # ── history display ─────────────────────────────────────────────────────────
 
+def _annotate_installed(kind: str, results: list[dict]) -> None:
+    """Set `installed_version` on -i results: brew info's own version
+    fields say what is available, not what is on disk."""
+    for item in results:
+        if kind == "installed_cask":
+            item["installed_version"] = str(item.get("installed") or "")
+        else:
+            item["installed_version"] = installed.installed_formula_version(item)
+
+
 def _show_history(name: str, as_json: bool = False) -> None:
     from brew_hop_search.history import get_history
     from brew_hop_search.display import _envelope
@@ -842,6 +852,8 @@ def _main_inner(argv, _args_holder):
         truncated = len(results) > limit
         if truncated:
             results = results[:limit]
+        if kind.startswith("installed_"):
+            _annotate_installed(kind, results)
         total_matched += source_count if truncated else len(results)
         all_results.append((kind, results, age, source_count))
 
