@@ -7,6 +7,17 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [0.4.0]
+
+### Fixed
+
+- **The README names the version it ships with.** v0.3.8's README (and
+  so its PyPI page) said `0.3.7 (dev+3: 206de5a+dirty)`: the version
+  block was live `-V` output from an old tree. A release README now shows
+  `brew-hop-search X.Y.Z` exactly, and release builds refuse a README
+  that names another version. Docs: `docs/meta/RELEASING.md` § README
+  version line.
+
 ## [0.3.8]
 
 This release starts to target `brew <subcommand>` support; the `bhs` /

@@ -205,6 +205,9 @@ echo "── Step 4: Build package ───────────────
 if ! $DRY; then
     rm -rf dist/
 fi
+# The sdist/wheel carry README.md as the PyPI long description; a release
+# must not ship a README naming another version (v0.3.8 did).
+run ./scripts/check-readme-version.sh
 run uv build
 if ! $DRY; then
     echo
