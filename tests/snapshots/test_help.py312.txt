@@ -1,0 +1,52 @@
+usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]
+
+Fast offline-first Homebrew formula/cask search.
+
+positional arguments:
+  query                 search terms (AND-matched). Supports ^prefix, suffix$,
+                        ^exact$, "quoted phrase", name:/desc: scope, !negate.
+                        See --help=query or man page for the full grammar.
+
+sources (composable, default: remote API):
+  -f, --formulae, --formula
+                        formulae only
+  -c, --casks, --cask   casks only
+  -i, --installed       installed packages
+  -t, --taps            tapped repos
+  -L, --local           local API cache (offline)
+
+info:
+  -h [MODE]             terse help (or MODE: man, <section>, <flag>)
+  --help [MODE]         full help (or MODE: man, <section>, <flag>)
+  --man                 offline man page (same as --help=man)
+  -V, --version         version (-VV: commits + PyPI)
+  -C, --cache-status    cache status
+  -O, --outdated        outdated packages (terms filter by name)
+  --brew-verify         use brew for -O (slower, authoritative)
+  -H, --history         version history for rollback
+
+cache:
+  --refresh [DUR|KIND[,KIND...]], --fresh [DUR|KIND[,KIND...]]
+                        sync refresh: bare=force, =DUR=if older,
+                        =KIND[,KIND...] (kinds:
+                        index,installed,outdated,taps,local,all). --fresh is
+                        an alias
+  --stale [DUR]         background refresh threshold (default: 6h,
+                        $BREW_HOP_SEARCH_STALE_API to override)
+
+output:
+  -g, --grep            tab-separated for piping
+  -q, --quiet           results only (for grep/fzf)
+  --json [MODE]         JSON output; MODE=full (default) or short (compact row
+                        fields)
+  --csv                 CSV output
+  --tsv                 tab-separated with header
+  -T, --table           aligned columns (like sqlite3 -column)
+  --sql                 SQLite INSERT statements
+  --multi, --long       multi-line per-result with labeled fields
+  -n N[+OFF], --limit N[+OFF]
+                        max results [+offset], 0=all (default: 20, or
+                        $BREW_HOP_SEARCH_LIMIT)
+  -v, --verbose         source tags, cache info (-vv per-source detail)
+  --no-timing           suppress the `# [time]` footer
+                        ($BREW_HOP_SEARCH_NO_TIMING also works)

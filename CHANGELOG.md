@@ -15,6 +15,12 @@ Versions follow [PEP 440](https://peps.python.org/pep-0440/).
   to names matching the search grammar (`^prefix`, `suffix$`, `!negate`),
   AND-matched, before any output format. Spec: INPUT.md § Query.
 
+### Changed
+
+- Dev interpreter pinned to 3.12 via `.python-version`. CI tests the
+  floor and the newest stable, 3.9 and 3.15; `make test-all` runs every
+  Python in between.
+
 ### Fixed
 
 - The commit-count version test no longer depends on whether the tree
