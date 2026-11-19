@@ -31,12 +31,15 @@ jobs:
       - name: Run tests
         run: uv run python -m pytest tests/ -v
       # GitHub's Ubuntu images ship Homebrew at /home/linuxbrew/.linuxbrew,
-      # off PATH. Exercise the real thing once: index fetch, installed, outdated.
+      # off PATH, with nothing installed. Install one small formula so -i and
+      # -O have something real to read: index fetch, installed, outdated.
       - name: Linuxbrew smoke
         if: runner.os == 'Linux' && matrix.python-version == '3.15'
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew --version
+          brew install --quiet hello
           uv run brew-hop-search python -n3
-          uv run brew-hop-search -i -n3
+          uv run brew-hop-search -i hello
+          uv run brew-hop-search -i -g hello | grep -qP '^hello\t'
           uv run brew-hop-search -O -q
