@@ -9,20 +9,38 @@ Built on SQLite + FTS5 for instant local search with smart caching.
 [PyPI](https://pypi.org/project/brew-hop-search/) ·
 [Brew Tap](https://github.com/mcint/homebrew-tap/blob/main/Formula/brew-hop-search.rb)
 
+## Try it
+
+```sh
+uvx brew-hop-search python          # nothing to install: runs once from PyPI
+```
+
 ## Install
 
 ```sh
 # PyPI (recommended)
 uv tool install brew-hop-search     # or: pip install brew-hop-search
-uvx brew-hop-search python          # one-shot without install
 
 # Homebrew tap
 brew tap mcint/tap
 brew install brew-hop-search
 ```
 
-Either install puts three names on PATH: `brew-hop-search`, the short
-alias `brewhs`, and `brew-hs`, which brew runs as `brew hs python`.
+Works with Homebrew on macOS and on Linux (Linuxbrew).
+
+## Names
+
+Either install puts the same tool on PATH under three names, and brew
+picks up the third as a subcommand:
+
+```sh
+brew-hop-search python      # full name
+brewhs python               # short alias
+brew-hs python              # brew's naming for external commands …
+brew hs python              # … so brew runs it as `brew hs`
+```
+
+The examples below use the full name; any of these works the same.
 
 ## Examples
 
@@ -40,7 +58,7 @@ brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
 brew-hop-search -O                     # show outdated (local)
 brew-hop-search -O --brew-verify       # diff: bhs vs brew
 brew-hop-search -H python@3.13         # version history for rollback
-brew-hop-search --refresh python       # force re-fetch
+brew-hop-search python --refresh       # force re-fetch (--refresh last: it takes a value)
 ```
 
 ## How it works
