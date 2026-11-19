@@ -1,12 +1,15 @@
 ---
 title: remote-tap — browse a tap's formulae without tapping it
 date: 2026-10-27
+revised: 2026-11-19 (rev 2, -tt)
 kind: spec-draft
 bead: bhs-vv6
 tldr: >
-  `bhs --tap=user/repo [query]` lists a tap's formulae and casks straight
+  `bhs -tt=user/tap [query]` lists a tap's formulae and casks straight
   from GitHub (one tree-API call plus raw file fetches), parsed with the
   existing .rb regexes, cached in a `remote_tap` table under the taps TTL.
+  `-t` stays local; doubling it means "look online". `=` names an exact
+  tap; a bare term searches what is already known.
   Verbosity is the teaching surface: -v adds the repo blurb and counts,
   -vv shows every URL hit and the tree it saw, -vvv prints the curl | jq
   pipeline that reproduces the listing by hand.
@@ -21,9 +24,14 @@ touching the machine. Input is the tap's short name or URL.
 
 **Draft** — bead bhs-vv6. Sits beside [locations](locations.md): a
 remote tap is a *source* that lives in no local *root*, which is why it
-gets its own table rather than a row in `tap`. Vocabulary follows
-[cli-vocabulary](cli-vocabulary.md) Option A (long flag with a value);
-the Option B spelling would be `bhs taps ls user/repo`.
+gets its own table rather than a row in `tap`.
+
+**Rev 2 (2026-11-19).** Rev 1 spelled it `--tap=USER/REPO`. The owner
+settled the spelling on 2026-11-08 and refined it on #40: `-t` stays
+strictly local ("no confusion about what's local, keep the filtering
+there"); `-tt` is the remote lens; and `=` binds an exact tap name,
+while a bare term searches what is already known. `--tap=` is dropped.
+The Option B spelling would be `bhs taps ls user/repo`.
 
 ## Purpose
 
@@ -39,27 +47,51 @@ Two needs from feature-requests.txt (2026-09-15):
 ## Input
 
 ```
-bhs --tap=USER/REPO [query ...]
-bhs --tap=https://github.com/USER/homebrew-REPO [query ...]
+bhs -t [query ...]                      # local taps (today, unchanged)
+bhs -t=USER/REPO [query ...]            # one local tap, by exact name
+bhs -tt=USER/REPO [query ...]           # one remote tap, fetched from GitHub
+bhs -tt=https://github.com/USER/homebrew-REPO [query ...]
+bhs -tt [query ...]                     # search remote taps already previewed (cache only)
 ```
 
-- `--tap` is repeatable; each value is one tap. Query terms filter the
+The rule, in the owner's words: with `=` "that assumes that that's the
+exact name"; without it, "it's a search over locally known ones".
+
+| spelling | where it looks | network |
+|---|---|---|
+| `-t` | every locally tapped repo | no |
+| `-t=user/repo` | that tapped repo only; error if not tapped, with a hint to try `-tt=` | no |
+| `-tt` | every remote tap in the `remote_tap` cache | no |
+| `-tt=user/repo` | that repo on GitHub (fetched, then cached) | yes, unless fresh |
+
+- **Parsing.** argparse can't give a count flag a value, so a small argv
+  pre-pass turns `-t=VALUE` / `-tt=VALUE` (and `--taps=VALUE`) into the
+  count plus an exact-tap value before argparse runs. `=` must be
+  attached; `-tt user/repo` with a space is a search term, not a tap
+  name. `-t=` inside a short cluster (`-it=x`) is a usage error.
+- `-tt=` is repeatable; each value is one tap. Query terms filter the
   union with the search grammar (INPUT.md § Query), name and desc.
 - Short form resolves per brew's convention: `user/repo` ⇒ GitHub repo
   `user/homebrew-repo`. A full GitHub URL is accepted as-is. Other hosts
   are out of scope for v1 (reject with a clear message).
+- `user/repo/name` (brew's fully qualified formula name) after `-tt=`
+  previews that one formula.
 - Kind filters `-f` / `-c` apply. Formats `-g`, `--json`, `--csv`,
   `--tsv`, `-T`, `--sql` apply.
 - Freshness: `--refresh=taps` and `--stale DUR` honor the taps TTL
-  (`BREW_HOP_SEARCH_STALE_TAPS`). `-L` / offline reads the cache only.
+  (`BREW_HOP_SEARCH_STALE_TAPS`). `--offline` (0.4.0) reads the cache
+  only, which makes `-tt=user/repo --offline` the same as a cached
+  `-tt` filtered to that tap.
 - Auth: if `GITHUB_TOKEN` or `GH_TOKEN` is set it is sent as a Bearer
   header; otherwise unauthenticated (60 req/h). The listing costs one
   API request plus one raw fetch per `.rb` file; raw fetches are not
   subject to the API limit.
 
-`--tap` composes with `-t`: `-t` is the locally tapped set, `--tap` is a
-named remote. Both populate the same output sections, tagged `t` at
-`-v`, with the remote ones carrying the tap slug as today.
+Local and remote are never mixed silently: `-t` and `-tt` results print
+in separate sections (`# taps` and `# remote taps`), both tagged `t` at
+`-v`, the remote ones carrying the tap slug. Doubling a source letter to
+mean "look online" is noted in cli-vocabulary as a pattern; no other
+source uses it yet.
 
 ## Fetch
 
@@ -134,11 +166,14 @@ trace lines; the reproduce text is not included (it is a rendering of
 ## Examples
 
 ```
-bhs --tap=steipete/tap                 # list everything
-bhs --tap=steipete/tap -c              # casks only
-bhs --tap=steipete/tap goplaces -vvv   # one match, plus how to do it by hand
-bhs --tap=a/one --tap=b/two cli        # two taps, one filter
-bhs --tap=steipete/tap -L              # cache only, no network
+bhs -tt=steipete/tap                   # list everything
+bhs -tt=steipete/tap -c                # casks only
+bhs -tt=steipete/tap goplaces -vvv     # one match, plus how to do it by hand
+bhs -tt=steipete/tap/goplaces          # one formula
+bhs -tt=a/one -tt=b/two cli            # two taps, one filter
+bhs -tt cli                            # search taps already previewed, offline
+bhs -t=homebrew/core wget              # one local tap, exact name
+bhs -tt=steipete/tap --offline         # cache only, no network
 ```
 
 ## Tests
@@ -147,6 +182,10 @@ Red first, fixtures under `tests/fixtures/remote_tap/`: a recorded tree
 JSON and four `.rb` files; `urlopen` monkeypatched to serve them by URL.
 
 - default / `-v` / `-vv` / `-vvv` snapshots.
+- argv pre-pass: `-t`, `-t=x/y`, `-tt`, `-tt=x/y`, `-tt=x/y -tt=a/b`,
+  `-tt x/y` (search term, not a tap), `-it=x` (usage error),
+  `--taps=x/y`; a table test over each.
+- `-t=user/repo` for an untapped repo errors and suggests `-tt=`.
 - short name → `homebrew-` repo; full URL accepted; non-GitHub rejected.
 - second run within TTL makes zero requests; `--refresh=taps` makes
   them again.
@@ -157,7 +196,7 @@ JSON and four `.rb` files; `urlopen` monkeypatched to serve them by URL.
 
 ## Open questions
 
-- Should `--tap` also accept a bare `user` to enumerate that user's
+- Should `-tt=user` (no repo) enumerate that user's
   `homebrew-*` repos? Cheap (one search-API call) but a different
   feature; leave for a follow-up bead.
 - Whether `remote_tap` rows should feed the all-cached aggregate
