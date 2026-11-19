@@ -23,10 +23,16 @@ CASK_URL = "https://formulae.brew.sh/api/cask.json"
 
 
 def fetch(url: str):
+    import time
     from brew_hop_search import user_agent
+    from brew_hop_search.timing import record_api
     req = Request(url, headers={"User-Agent": user_agent()})
-    with urlopen(req, timeout=TIMEOUT) as r:
-        return json.loads(r.read())
+    t0 = time.monotonic()
+    try:
+        with urlopen(req, timeout=TIMEOUT) as r:
+            return json.loads(r.read())
+    finally:
+        record_api(time.monotonic() - t0)  # counted in the footer's api(n)
 
 
 def _formula_rows(data: list[dict]) -> list[dict]:

@@ -61,10 +61,16 @@ def fetch_latest(timeout: float = 5) -> str:
 
     Raises on network/parse errors; callers decide how loud to be.
     """
+    import time
     from brew_hop_search import user_agent
+    from brew_hop_search.timing import record_api
     req = Request(PYPI_URL, headers={"User-Agent": user_agent()})
-    with urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read())
+    t0 = time.monotonic()
+    try:
+        with urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read())
+    finally:
+        record_api(time.monotonic() - t0)
     return data.get("info", {}).get("version", "") or ""
 
 

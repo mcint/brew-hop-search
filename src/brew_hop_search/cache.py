@@ -34,6 +34,10 @@ _pending_refreshes: list[tuple[str, "Path", float]] = []
 
 def register_pending_refresh(kind: str, sentinel: "Path") -> None:
     _pending_refreshes.append((kind, sentinel, time.time()))
+    # Footer: a refresh was started this run; the grace poll may upgrade
+    # "bg" to a duration if it sees the sentinel land.
+    from brew_hop_search.timing import note_refresh
+    note_refresh("bg")
 
 
 def pending_refreshes() -> list[tuple[str, "Path", float]]:
