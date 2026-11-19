@@ -245,5 +245,21 @@ def search(db: sqlite_utils.Database, kind: str, query: str, limit: int,
         if s > 0:
             scored.append((s, item))
 
-    scored.sort(key=lambda x: (-x[0], x[1].get("name") or x[1].get("token", "")))
+    scored.sort(key=lambda x: (-x[0], _sort_name(x[1])))
     return [item for _, item in scored[offset:offset + limit]]
+
+
+def _sort_name(item: dict) -> str:
+    """Tie-break key: one lowercase string for every record shape.
+
+    Casks carry `name` as a list of display names (possibly empty);
+    formulae as a string. Mixing the two in a sort key raised TypeError
+    (str vs list) on 0.3.7 for `-i` with casks installed. First display
+    name, else the token, else the empty string.
+    """
+    name = item.get("name")
+    if isinstance(name, list):
+        name = next((n for n in name if isinstance(n, str) and n), None)
+    if not isinstance(name, str) or not name:
+        name = item.get("token") or ""
+    return str(name).lower()
