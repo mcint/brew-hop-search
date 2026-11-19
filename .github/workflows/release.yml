@@ -18,9 +18,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [macos-latest, ubuntu-latest]
         python-version: ["3.9", "3.15"]
     steps:
       - uses: actions/checkout@v4

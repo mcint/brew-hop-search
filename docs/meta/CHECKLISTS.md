@@ -41,7 +41,8 @@ Check:
 ## Per PR
 
 Definitely:
-- CI green on every matrix entry (3.9, 3.15); `make test-all` before a
+- CI green on every matrix entry (macOS and Linux, 3.9 and 3.15);
+  `make test-all` before a
   PR that touches output. A snapshot that passes on 3.12 and fails on
   3.13 is a library-default change, not a flake: key the snapshot by the
   measured version threshold in the one test (as `test_help` does), do
