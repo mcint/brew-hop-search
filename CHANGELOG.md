@@ -27,6 +27,13 @@ This release starts to target `brew <subcommand>` support; the `bhs` /
 - Dev interpreter pinned to 3.12 via `.python-version`. CI tests the
   floor and the newest stable, 3.9 and 3.15; `make test-all` runs every
   Python in between.
+- **The time footer tells the whole story.** `# [time] total 0.129s ·
+  cache 0.037s · api(0) —`, with `· refresh bg` or `· refresh 1.9s` when a
+  background refresh ran. `total` runs from the package's first import,
+  not from `main()`; `cache` is the SQLite time; `api(n)` counts
+  foreground HTTP requests. The v1 footer once printed `0.134s` beside a
+  shell `time` of 2.7s. Spec: `docs/specs/features/timing.md`, which also
+  names what the process cannot see (brew's own bootstrap under `brew hs`).
 
 ### Fixed
 
