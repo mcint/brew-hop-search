@@ -2,28 +2,29 @@
 
 ## Reporting Vulnerabilities
 
-**Preferred:** GitHub Private Vulnerability Reporting — the "Report a
-vulnerability" button on this repo's Security tab.
+**Preferred**, either of:
 
-**Also:** Signal, username `[user].32` where `[user]` is this repo's
-GitHub owner. Or age-encrypted email, below.
+- GitHub Private Vulnerability Reporting: the "Report a vulnerability"
+  button on this repo's Security tab.
+- Signal: username `[user].32`, where `[user]` is this repo's GitHub
+  owner.
 
-**Email:** security@pkgs.mcint.io
+**Email, if neither works for you:** security@pkgs.mcint.io. Please
+encrypt it with [age](https://age-encryption.org) to this key:
 
-**SSH public key (age-compatible):**
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh
 ```
 
-Encrypt your report with:
 ```sh
-echo "report text" | age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") | mail -s "brew-hop-search security" security@pkgs.mcint.io
+# save the key above as bhs-security.pub, then either:
+age -a -R bhs-security.pub < report.txt > report.txt.age   # attach this
+age -a -R bhs-security.pub < report.txt | mail -s "brew-hop-search security" security@pkgs.mcint.io
 ```
 
-Or attach a file:
-```sh
-age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") -o report.age report.txt
-```
+`-a` writes ASCII armor, so the report survives being pasted into a mail
+body. Plain email is fine too, if encryption is a barrier; say in the
+subject that it's a security report.
 
 This is a hobby project with one maintainer. I read reports when I
 see them and fix what I can, but I can't promise a response time or
