@@ -16,6 +16,8 @@ class BrewHopSearch < Formula
 
   def install
     virtualenv_install_with_resources
+    bin.install_symlink "brew-hop-search" => "brewhs"
+    bin.install_symlink "brew-hop-search" => "brew-hs" # `brew hs`
   end
 
   test do
