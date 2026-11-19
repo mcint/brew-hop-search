@@ -3,7 +3,7 @@
   Fast offline-first Homebrew formula/cask search.
   parsed: -O
 
-    -O, --outdated  outdated packages
+    -O, --outdated  outdated packages (terms filter by name)
 
   more help:
     --help=<section>      e.g. --help=sources, --help=output
