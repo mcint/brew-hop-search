@@ -1,0 +1,3 @@
+# bd merge driver retired with bd→br adoption (2026-06-05): br has no
+# merge driver; resolve issues.jsonl conflicts via `br sync` import.
+# .beads/issues.jsonl merge=beads
