@@ -65,6 +65,7 @@ yellow = lambda t: c("33", t)
 cyan = lambda t: c("36", t)
 red = lambda t: c("31", t)
 magenta = lambda t: c("35", t)
+blue = lambda t: c("34", t)
 USE_COLOR_STDERR = sys.stderr.isatty()
 
 
