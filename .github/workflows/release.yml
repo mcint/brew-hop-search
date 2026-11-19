@@ -1,16 +1,43 @@
 name: Release
 
+# Fires on official tags (vX.Y.Z) and candidates (vX.Y.Z-rcN). Tests run
+# first; nothing is built or published from a tag that fails the suite.
+# Candidates publish to TestPyPI; official tags to PyPI. Pushing a vX.Y.Z
+# tag is the owner's act (docs/meta/RELEASING.md). tag-draft/* tags match
+# nothing here on purpose.
+
 on:
   push:
     tags:
       - "v*"
 
+# Least privilege by default; the publish jobs add id-token: write and the
+# GitHub-release job adds contents: write for themselves.
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
+  test:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install
+        run: uv sync --python ${{ matrix.python-version }}
+      - name: Smoke test
+        run: |
+          uv run brew-hop-search --help
+          uv run python -c "from brew_hop_search import __version__; print(__version__)"
+      - name: Run tests
+        run: uv run python -m pytest tests/ -v
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +50,28 @@ jobs:
           name: dist
           path: dist/
 
+  testpypi-publish:
+    if: contains(github.ref_name, '-rc')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/brew-hop-search/
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   pypi-publish:
+    if: ${{ !contains(github.ref_name, '-rc') }}
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -37,10 +85,14 @@ jobs:
         with:
           name: dist
           path: dist/
+      # Needs a trusted publisher on pypi.org (bead bhs-59v). Until then
+      # this job fails with invalid-publisher and the owner runs
+      # `make publish` locally.
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   github-release:
+    if: ${{ !contains(github.ref_name, '-rc') }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
