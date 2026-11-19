@@ -2,7 +2,11 @@
 
 ## Reporting Vulnerabilities
 
-Reports are accepted via age-encrypted email.
+**Preferred:** GitHub Private Vulnerability Reporting — the "Report a
+vulnerability" button on this repo's Security tab.
+
+**Also:** Signal, username `[user].32` where `[user]` is this repo's
+GitHub owner. Or age-encrypted email, below.
 
 **Email:** security@pkgs.mcint.io
 
@@ -21,7 +25,10 @@ Or attach a file:
 age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") -o report.age report.txt
 ```
 
-We will acknowledge receipt within 72 hours and aim to provide an initial assessment within 7 days.
+This is a hobby project with one maintainer. I read reports when I
+see them and fix what I can, but I can't promise a response time or
+a fix date. If you don't hear back in a few weeks, ping again. Keep
+reports short; a sentence and a repro is plenty.
 
 ## Threat Model & Risk Analysis
 
