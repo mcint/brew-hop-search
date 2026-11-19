@@ -7,6 +7,13 @@ curated narrative, grouped and headlined.
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/).
 Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
+## [0.3.8]
+
+### Fixed
+
+- The commit-count version test no longer depends on whether the tree
+  has been built.
+
 ## [0.3.7] — 2026-05-28
 
 A user-facing capability release: real query syntax, offline-first
