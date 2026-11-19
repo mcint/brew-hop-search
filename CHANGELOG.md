@@ -13,6 +13,9 @@ Versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 - The commit-count version test no longer depends on whether the tree
   has been built.
+- `-C` columns line up after the `db` row: count and age right-aligned,
+  ttl in one column, padded by visible width so colour codes do not skew
+  the math.
 
 ## [0.3.7] — 2026-05-28
 

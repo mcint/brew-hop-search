@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 
@@ -32,6 +33,21 @@ def fmt_duration(seconds: float, sub_minute: bool = False) -> str:
         return f"{h}h{m}m" if m else f"{h}h"
     d, h = divmod(h, 24)
     return f"{d}d{h}h" if h else f"{d}d"
+
+# ── width helpers ────────────────────────────────────────────────────────────
+
+_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
+
+
+def visible_len(text: str) -> int:
+    """Length of `text` as rendered, ignoring ANSI SGR sequences."""
+    return len(_ANSI_RE.sub("", text))
+
+
+def pad_visible(text: str, width: int, right: bool = False) -> str:
+    """Pad `text` to `width` visible columns (ANSI-aware); right-align if asked."""
+    fill = " " * max(0, width - visible_len(text))
+    return fill + text if right else text + fill
 
 # ── colour helpers ───────────────────────────────────────────────────────────
 
