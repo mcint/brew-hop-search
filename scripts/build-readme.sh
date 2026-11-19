@@ -25,7 +25,7 @@ $BHS --csv python -n 3 2>&1| strip_ansi > "$tmpdir/CSV_OUTPUT"
 $BHS --table python -n 5 2>&1 | strip_ansi > "$tmpdir/TABLE_OUTPUT"
 $BHS -C 2>&1               | strip_ansi > "$tmpdir/CACHE_OUTPUT"
 $BHS --help 2>&1            | strip_ansi > "$tmpdir/HELP_OUTPUT"
-$BHS -V 2>&1               | strip_ansi > "$tmpdir/VERSION_OUTPUT"
+BHS="$BHS" ./scripts/readme-version.sh | strip_ansi > "$tmpdir/VERSION_OUTPUT"
 
 # ── Substitute placeholders ──────────────────────────────────
 # Each {{PLACEHOLDER}} must appear alone on its line in the template.

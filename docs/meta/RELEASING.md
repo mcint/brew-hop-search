@@ -64,6 +64,19 @@ git fetch . dev:main && git push origin main
 Until trusted publishing is configured, `make publish` runs locally
 between the tag push and the `main` move.
 
+## README version line
+
+`README.md` is the PyPI long description, so it ships inside the sdist and
+wheel. Its `## Version` block is the release version exactly
+(`brew-hop-search X.Y.Z`), written by `scripts/readme-version.sh` when
+VERSION has no `-dev`; dev trees show live `-V`. The README is regenerated
+after the promote (release.sh Step 2.5), and every build of a release
+version (release.sh Step 4, `make build`) runs
+`scripts/check-readme-version.sh`, which refuses a README naming any
+other version. v0.3.8 shipped `0.3.7 (dev+3: 206de5a+dirty)` there: the
+block was live output from an old tree, and a build outside release.sh
+picked it up unchecked.
+
 `--skip-publish` also skips the fast-forward of `main` and the post-bump
 on purpose. Never hand-run a step the script deliberately skipped. That is
 exactly what happened on 2026-11-08 (`git fetch . release/0.3.8:main` by

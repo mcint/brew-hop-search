@@ -20,7 +20,8 @@ test-all: ## Run tests on every PYTHONS version (ephemeral envs)
 	  uv run --isolated --python $$v python -m pytest tests/ -q --tb=short || exit 1; \
 	done
 
-build: test ## Build package (runs tests first)
+build: test ## Build package (runs tests first; a release needs a matching README)
+	./scripts/check-readme-version.sh
 	uv build
 
 readme: ## Regenerate README.md from live output
